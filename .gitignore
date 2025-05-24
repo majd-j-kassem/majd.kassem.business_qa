@@ -1,2 +1,70 @@
 *.venv
 *.code-workspace
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+# This is crucial! Adjust 'venv/' if your virtual env has a different name (e.g., .venvmajd/)
+.venv/
+venv/
+env/
+.venvmajd/ # Add this specifically for your .venvmajd
+
+# Editor/IDE-specific files
+.idea/             # JetBrains IDEs (PyCharm, IntelliJ, etc.)
+.vscode/           # VS Code
+*.sublime-project
+*.sublime-workspace
+# Distribution / packaging
+.Python/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache/
+nosetests.xml
+coverage.xml
+*.cover
+.pytest_cache/ # Pytest cache directory
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Environment variables
+.env
+.flaskenv
+
+# Miscellaneous
+*.log
+*.sqlite3
+*.csv # Be careful with this one if CSVs are part of your data
+*.dat
