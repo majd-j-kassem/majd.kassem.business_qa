@@ -3,20 +3,24 @@ from selenium.webdriver.common.by import By
 from pages.home.login_page import LoginPage
 import unittest
 import time
+import pytest
 
+@pytest.mark.usefixtures("oneTimeSetUp", "setUp")
 class TestLogin(unittest.TestCase):
+    
+    @pytest.fixture(autouse=True)
+    def classSetup(self, oneTimeSetUp):
+        self.login_page = LoginPage(self.driver)
+    
+    
+    @pytest.mark.run(order = 2)
     def test_valid_login(self):
-        base_url = "http://127.0.0.1:8000/"
-        driver = webdriver.Chrome()
-        driver.maximize_window()
-        driver.implicitly_wait(5)
-        
-        driver.get(base_url)
-        login_page = LoginPage(driver)
-        login_page.login("mjdwassouf", "mjd0957708653A")
-        
-        result = login_page.verify_login_success()
-
+        self.login_page.login("mjdwassouf", "mjd0957708653A")
+        result = self.login_page.verify_login_success()
         assert result is True
-
-        driver.quit()
+                
+    @pytest.mark.run(order = 1)        
+    def test_invalid_login(self):
+        self.login_page.login("mjdwassouf", "mjd095770865a")
+        result = self.login_page.verify_login_faild()
+        assert result is True

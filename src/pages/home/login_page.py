@@ -15,6 +15,7 @@ class LoginPage(SeleniumDriver):
     password_locator = "id_password"
     login_button_locator = "//button[@class = 'login-button']"
     logout_locator = "Logout"
+    error_message_login_locator = "//li[@class='error approval-message']"
 
     
     def click_login_link(self):
@@ -26,8 +27,9 @@ class LoginPage(SeleniumDriver):
     def click_login_button(self):
         self.click_element(self.login_button_locator, locatorType="xpath")
         
-    def login(self, username, password):
+    def login(self, username="", password=""):
         self.click_login_link()
+        self.clear_fields()
         self.enter_username(username)
         self.enter_password(password)
         self.click_login_button()
@@ -35,8 +37,16 @@ class LoginPage(SeleniumDriver):
     def verify_login_success(self):
         is_logged_in = self.isElementPresent(self.logout_locator, locatorType="linktext")
         return is_logged_in
-    def verify_login_faild():
-        pass
+    ''''''
+    def verify_login_faild(self):
+        is_not_logged_in = self.isElementPresent(self.error_message_login_locator, locatorType="xpath")
+        return is_not_logged_in
+    def clear_fields(self):
+        email_field = self.get_element(self.email_loctor, locatorType="id")
+        email_field.clear()
+        email_password = self.get_element(self.password_locator, locatorType="id")
+        email_password.clear()
+        
 
     #Retrive HTML5 Validation Message for Null Login check later  
     def get_username_validation_message(self):
