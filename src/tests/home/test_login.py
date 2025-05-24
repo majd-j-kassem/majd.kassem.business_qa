@@ -15,9 +15,8 @@ class TestLogin(unittest.TestCase):
         login_page = LoginPage(driver)
         login_page.login("mjdwassouf", "mjd0957708653A")
         
-        logout_link = driver.find_element(By.LINK_TEXT, "Logout")
-        time.sleep(5)
-        if logout_link is not None:
-            print("we Logged in Successfully")
-        else:
-            print("Loin Faild")
+        result = login_page.verify_login_success()
+
+        assert result is True
+
+        driver.quit()

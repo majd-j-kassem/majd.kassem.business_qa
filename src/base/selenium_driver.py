@@ -4,8 +4,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import *
 
-class SeleniumDriver():
 
+class SeleniumDriver():
+    
     def __init__(self, driver):
         self.driver = driver
 
@@ -24,43 +25,48 @@ class SeleniumDriver():
         elif locatorType == "linktext":
             return By.LINK_TEXT
         else:
-            print("Locator type " + locatorType + " not correct/supported")
+            self.log.info("Locator type " + locatorType + " not correct/supported")
         return False
     def click_element(self, locator, locatorType="id"):
         try:  
             element = self.get_element(locator, locatorType)
             element.click()
-            print("Click on the element with locator:" + locator + "and locator type " + locatorType )
+            self.log.info("Click on the element with locator: " + 
+                          str(locator) + " and locator type " + str(locatorType))
 
-        except:
-            print("Can not click on the element with locator:" + locator + "and locator type " + locatorType )
+        except Exception as e:
+            self.log.error("Can not send data on the element with locator: " +
+                           str(locator) + " and locator type " + str(locatorType) + f". Error: {e}")
+            raise # Re-raise the exception so the test fails
     def get_element(self, locator, locatorType="id"):
         element = None
         try:
             locatorType = locatorType.lower()
             byType = self.getByType(locatorType)
             element = self.driver.find_element(byType, locator)
-            print("Element Found")
+            self.log.info("Element Found " + str(element))
         except:
-            print("Element not found")
+            self.log.info("Element not found" + str(element))
         return element
    
     def send_keys_element(self, data, locator, locatorType="id"):
         try:  
             element = self.get_element(locator, locatorType)
             element.send_keys(data)
-            print("Send data on the element with locator:" + locator + "and locator type " + locatorType )
+            self.log.info("Send data on the element with locator: " + 
+            locator + " and locator type " + str(element))
 
         except:
-            print("Can not send data on the element with locator:" + locator + "and locator type " + locatorType )
+            self.log.info("Can not send data on the element with locator:" + 
+            locator + "and locator type " + locatorType )
     def isElementPresent(self, locator, locatorType="id"):
         try:
             element = self.get_element(locator, locatorType)
             if element is not None:
-                print("Element Found")
+                self.log.info("Element Found " + str(element))
                 return True
             else:
-                print("Element not found")
+                self.log.info("Element not found " + str(element))
                 return False
         except:
             print("Element not found")
@@ -70,13 +76,13 @@ class SeleniumDriver():
         try:
             elementList = self.driver.find_elements(byType, locator)
             if len(elementList) > 0:
-                print("Element Found")
+                self.log.info("Element Found ")
                 return True
             else:
-                print("Element not found")
+                self.log.info("Element not found")
                 return False
         except:
-            print("Element not found")
+            self.log.info("Element not found")
             return False
     def waitForElement(self, locator, locatorType="id",
                        timeout=10, pollFrequency=0.5):
@@ -84,16 +90,15 @@ class SeleniumDriver():
         try:
             self.driver.implicitly_wait(0)
             byType = self.hw.getByType(locatorType)
-            print("Waiting for maximum :: " + str(timeout) +
+            self.log.info("Waiting for maximum :: " + str(timeout) +
                           " :: seconds for element to be visible")
             wait = WebDriverWait(self.driver, timeout=timeout, poll_frequency=pollFrequency,
                                  ignored_exceptions=[NoSuchElementException,
                                                      ElementNotVisibleException,
                                                      ElementNotSelectableException])
             element = wait.until(EC.visibility_of_element_located((byType, locator)))
-            print("Element appeared on the web page")
+            self.log.info("Element appeared on the web page")
         except:
-            print("Element not appeared on the web page")
-            print_stack()
+            self.log.info("Element not appeared on the web page")
         self.driver.implicitly_wait(2)
         return element
