@@ -1,28 +1,27 @@
+// Jenkinsfile (Declarative Pipeline)
+
 pipeline {
     agent {
-        // Use a Docker agent to ensure a consistent environment for your tests.
-        // This image should have Python, Pip, Chrome, and ChromeDriver installed.
-        // You might need to build your own custom Docker image if a standard one doesn't suffice.
         docker {
-            image 'selenium/standalone-chrome:latest' // Or a more specific version, or your custom image
-            args '-v /dev/shm:/dev/shm' // Required for Chrome in Docker to prevent crashing
+            image 'selenium/standalone-chrome:latest'
+            args '-v /dev/shm:/dev/shm'
         }
     }
 
     environment {
-        // Define your Render URLs as environment variables
-        RENDER_DEV_URL = 'https://majd-kassem-business-dev.onrender.com/' // Replace with your actual Dev URL
-        RENDER_PROD_URL = 'https://majd-kassem-business.onrender.com/' // Replace with your actual Prod URL
+        RENDER_DEV_URL = 'https://majd-kassem-business-dev.onrender.com/'
+        RENDER_PROD_URL = 'https://majd-kassem-business.onrender.com/'
+        // Define paths for JUnit reports
+        DEV_JUNIT_REPORT = "target/junit-dev-results.xml"
+        PROD_JUNIT_REPORT = "target/junit-prod-results.xml"
     }
 
     stages {
         stage('Checkout Code') {
             steps {
                 script {
-                    // Ensure the workspace is clean before cloning
-                    // deleteDir() // Uncomment if you want a completely clean workspace every time
-                    git branch: 'main', url: 'https://github.com/majd-j-kassem/majd.kassem.business_qa.git' // Replace with your actual GitHub URL and branch
-                    sh 'ls -la' // Just to verify files are checked out
+                    git branch: 'main', url: 'https://github.com/majd-j-kassem/majd.kassem.business_qa.git'
+                    sh 'ls -la'
                 }
             }
         }
@@ -30,10 +29,9 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 script {
-                    // Assuming Python is already in the selenium/standalone-chrome image or you're adding it
                     sh 'pip install --upgrade pip'
-                    sh 'pip install -r requirements.txt' // Ensure you have a requirements.txt file
-                    sh 'pip install pytest' // Install pytest if not in requirements.txt
+                    sh 'pip install -r requirements.txt'
+                    sh 'pip install pytest'
                 }
             }
         }
@@ -41,16 +39,14 @@ pipeline {
         stage('Run Tests - Render Dev') {
             steps {
                 script {
-                    // Run tests against the Dev Render URL in headless mode
-                    sh "pytest src/tests --browser chrome-headless --base-url ${RENDER_DEV_URL}"
+                    // Run tests against the Dev Render URL in headless mode, outputting JUnit XML
+                    sh "pytest src/tests --browser chrome-headless --base-url ${RENDER_DEV_URL} --junitxml=${DEV_JUNIT_REPORT}"
                 }
             }
             post {
-                // Actions to take after this stage completes
                 always {
-                    // Publish JUnit test results if you configure pytest to output them
-                    // Example: pytest --junitxml=results.xml
-                    // junit 'results.xml'
+                    // Publish JUnit test results for Dev stage
+                    junit testResults: "${DEV_JUNIT_REPORT}", allowEmptyResults: true
                 }
                 failure {
                     echo "Tests against Render Dev failed!"
@@ -61,14 +57,14 @@ pipeline {
         stage('Run Tests - Render Prod') {
             steps {
                 script {
-                    // Run tests against the Prod Render URL in headless mode
-                    // This stage will only run if the previous stage (Dev tests) passed
-                    sh "pytest src/tests --browser chrome-headless --base-url ${RENDER_PROD_URL}"
+                    // Run tests against the Prod Render URL in headless mode, outputting JUnit XML
+                    sh "pytest src/tests --browser chrome-headless --base-url ${RENDER_PROD_URL} --junitxml=${PROD_JUNIT_REPORT}"
                 }
             }
             post {
                 always {
-                    // junit 'results.xml' // Again, if you're outputting JUnit results
+                    // Publish JUnit test results for Prod stage
+                    junit testResults: "${PROD_JUNIT_REPORT}", allowEmptyResults: true
                 }
                 failure {
                     echo "Tests against Render Prod failed!"
@@ -80,17 +76,15 @@ pipeline {
             steps {
                 script {
                     sh 'echo "Cleaning up workspace..."'
-                    // Clean up any generated files, though the Docker agent usually cleans itself
-                    // deleteDir() // Uncomment with caution, removes the entire workspace
                 }
             }
         }
     }
 
     post {
-        // Actions to take after the entire pipeline completes
         always {
             echo "Pipeline finished."
+            cleanWs() // Clean the Jenkins workspace
         }
         success {
             echo "All tests passed successfully!"
