@@ -16,7 +16,7 @@ class TestLogin(unittest.TestCase):
     @pytest.mark.run(order = 2)
     def test_valid_login(self):
         self.login_page.login("mjdwassouf", "mjd0957708653A")
-        result = self.login_page.verify_login_success()
+        result = self.login_page.verify_login_success_appearnce()
         assert result is True
                 
     @pytest.mark.run(order = 1)        

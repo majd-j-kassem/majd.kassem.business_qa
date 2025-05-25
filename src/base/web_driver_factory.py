@@ -10,6 +10,8 @@ Example:
 """
 import traceback
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+
 
 class WebDriverFactory():
 
@@ -31,28 +33,28 @@ class WebDriverFactory():
         PREFERRED: Set the path on the machine where browser will be executed
     """
 
-    def getWebDriverInstance(self):
+    def getWebDriverInstance(self, driver_options=None):
         """
        Get WebDriver Instance based on the browser configuration
 
         Returns:
             'WebDriver Instance'
         """
-        base_URL = "http://127.0.0.1:8000/"
-        if self.browser == "iexplorer":
-            # Set ie driver
-            driver = webdriver.Ie()
-        elif self.browser == "firefox":
-            driver = webdriver.Firefox()
-        elif self.browser == "chrome":
-            # Set chrome driver
-            driver = webdriver.Chrome()
+        if "chrome" in self.browser: # Use "in" because browser can be "chrome" or "chrome-headless"
+            # For newer Selenium (4.x+):
+            # webdriver_manager will download and manage the ChromeDriver executable
+            #service = Service(ChromeDriverManager().install())
+            #driver = webdriver.Chrome(service=service, options=driver_options) # Pass options here!
+            driver = webdriver.Chrome(options=driver_options) # Pass options here!
+        elif "firefox" in self.browser:
+            # For Firefox, you'd typically use GeckoDriverManager
+            # service = Service(GeckoDriverManager().install())
+            # driver = webdriver.Firefox(service=service, options=driver_options) # Pass options here!
+            driver = webdriver.Firefox() # Fallback if no specific options
         else:
-            driver = webdriver.Firefox()
-        # Setting Driver Implicit Time out for An Element
-        driver.implicitly_wait(3)
-        # Maximize the window
-        driver.maximize_window()
-        # Loading browser with App URL
-        driver.get(base_URL)
+            # Default to Chrome if browser is not specified or recognized
+            #service = Service(ChromeDriverManager().install())
+            #driver = webdriver.Chrome(service=service, options=driver_options)
+            driver = webdriver.Chrome(options=driver_options)
+
         return driver

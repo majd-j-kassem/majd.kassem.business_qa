@@ -3,6 +3,7 @@ from traceback import print_stack
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import *
+import time
 
 
 class SeleniumDriver():
@@ -43,7 +44,9 @@ class SeleniumDriver():
         try:
             locatorType = locatorType.lower()
             byType = self.getByType(locatorType)
-            element = self.driver.find_element(byType, locator)
+            wait = WebDriverWait(self.driver, 15) 
+            element = wait.until(EC.presence_of_element_located((byType, locator)))
+            #element = self.driver.find_element(byType, locator)
             self.log.info("Element Found " + str(element))
         except:
             self.log.info("Element not found" + str(element))
@@ -71,7 +74,31 @@ class SeleniumDriver():
         except:
             print("Element not found")
             return False
+    def isElementVisible(self, locator, locatorType="id", timeout=10, pollFrequency=0.5):
+        try:
+            byType = self.getByType(locatorType)
+            if not byType:
+                return False
 
+            self.log.info(f"Waiting for VISIBILITY of element with locator: '{locator}' "
+                        f"and type: '{locatorType}' for {timeout} seconds.")
+
+            wait = WebDriverWait(self.driver, timeout, poll_frequency=pollFrequency)
+            element = wait.until(EC.visibility_of_element_located((byType, locator)))
+            self.log.info(f"Element is visible: '{locator}' with type '{locatorType}'")
+            return element is not None
+        except Exception as e:
+            self.log.error(f"Element NOT visible: '{locator}' ({locatorType}) "
+                           f"after {timeout} seconds. Error: {e}")
+            # --- ADD SCREENSHOT HERE ---
+            try:
+                screenshot_name = f"element_not_visible_{locator.replace(' ', '_')}_{time.time()}.png"
+                self.driver.save_screenshot(f"screenshots/{screenshot_name}")
+                self.log.error(f"Screenshot taken: screenshots/{screenshot_name}")
+            except Exception as screenshot_e:
+                self.log.error(f"Failed to take screenshot: {screenshot_e}")
+            # --- END SCREENSHOT ADDITION ---
+            return False
     def elementPresenceCheck(self, locator, byType):
         try:
             elementList = self.driver.find_elements(byType, locator)
