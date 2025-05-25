@@ -13,51 +13,50 @@ def setUp():
 @pytest.yield_fixture(scope="class")
 def oneTimeSetUp(request, browser, base_url_from_cli):
     print(f"Running one time setUp for browser: {browser}")
-    driver_options = None
-    
+    driver_options = None # Initialize to None
+    is_headless = False # Flag to track if we're in headless mode
+
     if browser == "chrome":
         chrome_options = Options()
-        print("Configuring Chrome for visible mode (local).")
-        driver_options = chrome_options
+        driver_options = chrome_options  # <--- Assign chrome_options to driver_options HERE
         driver_options.add_argument('--no-sandbox')
         driver_options.add_argument('--disable-dev-shm-usage')
         driver_options.add_argument('--window-size=1920,1080') # Standard size for visible
         print("Configuring Chrome for visible mode (local).")
-    elif browser == "chrome-headless": # Treat 'chrome-headless' as a distinct browser type
+
+    elif browser == "chrome-headless":
         chrome_options = Options()
-        chrome_options.add_argument('--headless')
-        driver_options.add_argument('--window-size=2560,1440') # Or similar large resolution
+        driver_options = chrome_options  # <--- Assign chrome_options to driver_options HERE
+        driver_options.add_argument('--headless')
+        driver_options.add_argument('--no-sandbox')
+        driver_options.add_argument('--disable-dev-shm-usage')
+        driver_options.add_argument('--window-size=2560,1440') # Larger size for headless
         print("Configuring Chrome for headless mode.")
-        is_headless = True # Set the flag
-        driver_options = chrome_options
+        is_headless = True
+
     elif browser == "firefox":
-        # Add Firefox specific options if needed, e.g., for headless Firefox
-        # firefox_options = webdriver.FirefoxOptions()
-        # if "headless" in browser: # If you had "firefox-headless"
-        #    firefox_options.add_argument("--headless")
-        # driver_options = firefox_options
-        pass # Currently no specific options for Firefox beyond default
-    
+        # Add Firefox specific options here if needed
+        # For now, it will proceed with driver_options as None if not set here
+        pass
 
-
+    # Ensure WebDriverFactory handles the case where driver_options might still be None for 'firefox'
+    # if no options were set for it.
     wdf = WebDriverFactory(browser)
-    driver = wdf.getWebDriverInstance(driver_options=driver_options)
+    driver = wdf.getWebDriverInstance(driver_options=driver_options) # Pass the configured options
+
     driver.get(base_url_from_cli)
-    
-    if not is_headless:
+
+    if not is_headless: # Maximize only if not headless
         driver.maximize_window()
         print("Maximizing browser window.")
-    # Only maximize window if it's not headless
-    if "headless" not in browser: # Assuming you differentiate headless by browser name
-        driver.maximize_window()
-        print("Maximizing browser window.")
+
     if request.cls is not None:
         request.cls.driver = driver
-        request.cls.base_url = base_url_from_cli # Make base_url available to test classes
+        request.cls.base_url = base_url_from_cli
     yield driver
     driver.quit()
     print("Running one time tearDown")
-
+    
 def pytest_addoption(parser):
     parser.addoption( "--browser", action="store", default="chrome", 
                      help="browser to execute tests (chrome or firefox)")
