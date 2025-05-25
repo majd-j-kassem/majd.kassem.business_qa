@@ -21,7 +21,7 @@ pipeline {
                 script {
                     // Ensure the workspace is clean before cloning
                     // deleteDir() // Uncomment if you want a completely clean workspace every time
-                    git branch: 'main', url: 'https://github.com/your-username/majd.kassem.business_qa.git' // Replace with your actual GitHub URL and branch
+                    git branch: 'main', url: 'https://github.com/majd-j-kassem/majd.kassem.business_qa.git' // Replace with your actual GitHub URL and branch
                     sh 'ls -la' // Just to verify files are checked out
                 }
             }
