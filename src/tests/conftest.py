@@ -12,7 +12,7 @@ def setUp():
 @pytest.yield_fixture(scope="class")
 def oneTimeSetUp(request, browser):
     base_url = "http://127.0.0.1:8000/"
-    wdf = WebDriverFactory(driver)
+    wdf = WebDriverFactory(browser)
     driver = wdf.getWebDriverInstance()
     print("Running one time setUp")
 
