@@ -26,8 +26,10 @@ RUN rm requirements.txt
 # Switch back to the non-root 'seluser' for security
 # All subsequent commands in the Dockerfile, and when the container runs,
 # will be executed as 'seluser'.
+
+RUN mkdir -p /home/seluser && chown -R seluser:seluser /home/seluser && chmod -R 777 /home/seluser
+WORKDIR /home/seluser
 USER seluser
 
 # Set the working directory for subsequent commands to the seluser's home directory.
 # This is where Jenkins will mount your workspace.
-WORKDIR /home/seluser

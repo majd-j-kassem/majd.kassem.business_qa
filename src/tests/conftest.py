@@ -35,10 +35,10 @@ def oneTimeSetUp(request, browser, base_url_from_cli):
          # --- ADD THESE TWO LINES ---
         # Forces Chrome to use a unique, temporary user data directory for each run.
         # os.getpid() makes it unique per process, good for parallel execution (though not happening here).
-        temp_user_data_dir = os.path.join('/tmp', f'chrome_user_data_{os.getpid()}')
-        driver_options.add_argument(f"--user-data-dir={temp_user_data_dir}")
+        #temp_user_data_dir = os.path.join('/tmp', f'chrome_user_data_{os.getpid()}')
+        #driver_options.add_argument(f"--user-data-dir={temp_user_data_dir}")
         # Add remote debugging port - useful for debugging headless Chrome if needed
-        driver_options.add_argument("--remote-debugging-port=9222")
+        #driver_options.add_argument("--remote-debugging-port=9222")
         # --- END ADDITIONS ---
         print("Configuring Chrome for headless mode.")
         is_headless = True
