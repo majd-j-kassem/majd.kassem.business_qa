@@ -40,7 +40,7 @@ class WebDriverFactory():
         Returns:
             'WebDriver Instance'
         """
-        if "chrome" in self.browser: # Use "in" because browser can be "chrome" or "chrome-headless"
+        if self.browser == "chrome" or self.browser == "chrome-headless": # Use "in" because browser can be "chrome" or "chrome-headless"
             # For newer Selenium (4.x+):
             # webdriver_manager will download and manage the ChromeDriver executable
             #service = Service(ChromeDriverManager().install())
