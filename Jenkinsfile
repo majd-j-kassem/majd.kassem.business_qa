@@ -69,7 +69,7 @@ pipeline {
                 script { // The 'script' block is still needed for imperative steps within Declarative.
                     echo "Running tests against Render Dev: ${env.RENDER_DEV_URL} inside custom Docker image."
                     // Create directory for JUnit report inside the container
-                    sh "mkdir -p test-results" // This directory is now inside the container, mapped to host.
+                    sh "mkdir -p ${WORKSPACE}/test-results" // This directory is now inside the container, mapped to host.
                     // Run pytest. Dependencies are now pre-installed in the image.
                     sh "pytest src/tests --browser chrome-headless --base-url ${env.RENDER_DEV_URL} --junitxml=${env.JUNIT_REPORT_FILE}"
                 }
