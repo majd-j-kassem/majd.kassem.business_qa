@@ -29,7 +29,7 @@ pipeline {
             steps {
                 script {
                     // This checks out your Selenium test automation project from GitHub
-                    git branch: 'main', url: 'https://github.com/majd-j-kassem/majd.kassem.business_qa.git'
+                    git branch: 'dev', url: 'https://github.com/majd-j-kassem/majd.kassem.business_qa.git'
                     sh 'ls -la' // List files to verify checkout
                     echo "Selenium test code checked out."
                 }
