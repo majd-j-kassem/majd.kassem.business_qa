@@ -26,11 +26,12 @@ pipeline {
         CUSTOM_DOCKER_IMAGE_NAME = 'majd-selenium-runner'
 
         // --- Full Docker image name including tag, derived from BUILD_NUMBER ---
-        FULL_DOCKER_IMAGE_NAME = "${CUSTOM_DOCKER_IMAGE_NAME}:${BUILD_NUMBER}"
+        FULL_DOCKER_IMAGE_IMAGE_NAME = "${CUSTOM_DOCKER_IMAGE_NAME}:${BUILD_NUMBER}"
 
         // --- Allure Commandline Tool Name ---
         // This MUST match the name you configured under Jenkins > Manage Jenkins > Tools > Allure Commandline installations
-        ALLURE_COMMANDLINE_TOOL_NAME = 'Allure_2.27.0' // Make sure this matches your configuration
+        // Example: 'Allure_2.27.0' or whatever you named it.
+        ALLURE_COMMANDLINE_TOOL_NAME = 'Allure_2.27.0' // <--- IMPORTANT: Adjust this if your tool name is different!
     }
 
     stages {
@@ -61,11 +62,10 @@ pipeline {
                 // Using 'node('jenkins')' ensures the test execution happens on a Jenkins agent,
                 // which is good practice for Docker operations.
                 node('jenkins') {
-                    // Re-checkout SCM here if you need a fresh workspace for this stage,
-                    // or if this stage runs on a different agent.
-                    // For now, removing to avoid redundant checkout if 'agent any' is sufficient.
-                    // If you face issues with file availability, re-add 'checkout scm' here.
-                    // checkout scm // Uncomment if needed
+                    // We'll leave the `checkout scm` here as it was in your original file.
+                    // It ensures the workspace for *this specific node block* is fresh,
+                    // which can be helpful if previous stages touched the workspace.
+                    checkout scm
 
                     withEnv(["BASE_URL=${RENDER_DEV_URL}"]) {
                         script {
@@ -73,81 +73,82 @@ pipeline {
 
                             // --- IMPORTANT: Create directories on the Jenkins host's workspace ---
                             // These directories will be mounted into the Docker container.
-                            sh "mkdir -p test-results allure-results"
+                            sh "mkdir -p ${env.JUNIT_REPORT_FILE_INTERNAL.split('/')[0]} ${env.ALLURE_RESULTS_PATH_INTERNAL}"
                             // Set permissions for these directories ON THE JENKINS HOST.
                             // This ensures the container user can write to them.
-                            sh "chmod -R 777 test-results allure-results"
+                            sh "chmod -R 777 ${env.JUNIT_REPORT_FILE_INTERNAL.split('/')[0]} ${env.ALLURE_RESULTS_PATH_INTERNAL}"
 
                             // Now, run pytest inside the Docker container
                             docker.image(env.FULL_DOCKER_IMAGE_NAME).inside {
                                 echo "--- Inside Docker Container (Before Pytest) ---"
                                 sh 'pwd' // Should show the Jenkins workspace path inside the container
-                                sh 'ls -la'
-                                sh 'ls -la test-results'
-                                sh 'ls -la allure-results'
+                                sh "ls -la ${env.JUNIT_REPORT_FILE_INTERNAL.split('/')[0]}"
+                                sh "ls -la ${env.ALLURE_RESULTS_PATH_INTERNAL}"
                                 echo "Attempting to run pytest..."
 
-                                // Pytest command will write to the mounted volumes:
-                                // ${WORKSPACE}/test-results/junit-report.xml
-                                // ${WORKSPACE}/allure-results
-                                // Using ${WORKSPACE} here is crucial as it refers to the mounted Jenkins workspace
-                                // path inside the container, ensuring reports are written to the host.
+                                // Pytest command will write to the mounted volumes using the WORKSPACE variable,
+                                // which points to the Jenkins agent's workspace mounted inside the container.
                                 def pytestCommand = "pytest src/tests --browser chrome-headless --base-url ${env.BASE_URL} --junitxml=${WORKSPACE}/${env.JUNIT_REPORT_FILE_INTERNAL} --alluredir=${WORKSPACE}/${env.ALLURE_RESULTS_PATH_INTERNAL}"
                                 def pytestExitCode = sh(script: pytestCommand, returnStatus: true)
 
                                 echo "Pytest command finished with exit code: ${pytestExitCode}"
 
                                 echo "--- Inside Docker Container (After Pytest) ---"
-                                sh "ls -la test-results"
-                                sh "ls -la allure-results"
-
-                                // --- REPORT PUBLISHING (MOVED INSIDE CONTAINER BLOCK) ---
-                                // These steps now run while still inside the Docker container,
-                                // ensuring access to the newly generated report files.
-
-                                // JUnit Report Publishing
-                                if (fileExists("${WORKSPACE}/${env.JUNIT_REPORT_FILE_INTERNAL}")) {
-                                    echo "Found JUnit report file: ${env.JUNIT_REPORT_FILE_INTERNAL}. Publishing results."
-                                    junit "${WORKSPACE}/${env.JUNIT_REPORT_FILE_INTERNAL}"
-                                } else {
-                                    echo "WARNING: JUnit report file not found at ${env.JUNIT_REPORT_FILE_INTERNAL}. Skipping JUnit publishing."
-                                }
-
-                                // Allure Report Publishing
-                                // Check if the allure-results directory exists and is not empty
-                                if (fileExists("${WORKSPACE}/${env.ALLURE_RESULTS_PATH_INTERNAL}")) {
-                                    // Count files/directories within allure-results to check if it's empty
-                                    // Use 'ls -A' to include dotfiles (like .json, .txt) which Allure generates
-                                    def fileCount = sh(script: "ls -A ${WORKSPACE}/${env.ALLURE_RESULTS_PATH_INTERNAL} | wc -l", returnStdout: true).trim() as int
-
-                                    if (fileCount > 0) {
-                                        echo "Found Allure results in ${env.ALLURE_RESULTS_PATH_INTERNAL}. Publishing Allure Report."
-                                        // The 'allure' step will use the specified tool and results path
-                                        withEnv(["PATH+ALLURE=${tool env.ALLURE_COMMANDLINE_TOOL_NAME}/bin"]) { // Add Allure to PATH
-                                            allure([
-                                                reportBuildPolicy: 'ALWAYS', // Generates report even if previous fails
-                                                results: [[path: "${WORKSPACE}/${env.ALLURE_RESULTS_PATH_INTERNAL}"]]
-                                            ])
-                                        }
-                                        echo "Allure Report publishing complete."
-                                    } else {
-                                        echo "WARNING: Allure results directory found but empty at ${env.ALLURE_RESULTS_PATH_INTERNAL}. Skipping Allure Report publishing."
-                                    }
-                                } else {
-                                    echo "WARNING: Allure results directory not found at ${env.ALLURE_RESULTS_PATH_INTERNAL}. Skipping Allure Report publishing."
-                                }
-                                // END OF REPORT PUBLISHING
+                                sh "ls -la ${env.JUNIT_REPORT_FILE_INTERNAL.split('/')[0]}"
+                                sh "ls -la ${env.ALLURE_RESULTS_PATH_INTERNAL}"
 
                                 // Fail the build if pytest didn't exit cleanly
                                 if (pytestExitCode != 0) {
                                     error "Pytest tests failed (exit code: ${pytestExitCode}). Check logs above for details."
                                 }
                             } // End of docker.image().inside {}
-                        } // End of script block inside withEnv
+
+                            // --- REPORT PUBLISHING (MOVED OUTSIDE DOCKER CONTAINER BLOCK) ---
+                            // These steps now run on the Jenkins agent's host machine AFTER the Docker container
+                            // has finished and written the report files to the shared workspace.
+                            echo "--- Publishing Reports (Outside Docker Container) ---"
+
+                            // JUnit Report Publishing
+                            if (fileExists(env.JUNIT_REPORT_FILE_INTERNAL)) { // Check path relative to Jenkins workspace
+                                echo "Found JUnit report file: ${env.JUNIT_REPORT_FILE_INTERNAL}. Publishing results."
+                                junit env.JUNIT_REPORT_FILE_INTERNAL // Path relative to Jenkins workspace
+                            } else {
+                                echo "WARNING: JUnit report file not found at ${env.JUNIT_REPORT_FILE_INTERNAL}. Skipping JUnit publishing."
+                            }
+
+                            // Allure Report Publishing
+                            if (fileExists(env.ALLURE_RESULTS_PATH_INTERNAL)) { // Check if the directory exists
+                                // Now, check if the directory is empty by getting its content count
+                                def fileCount = sh(script: "ls -A ${env.ALLURE_RESULTS_PATH_INTERNAL} | wc -l", returnStdout: true).trim() as int
+
+                                if (fileCount > 0) {
+                                    echo "Found Allure results in ${env.ALLURE_RESULTS_PATH_INTERNAL}. Publishing Allure Report."
+                                    // Use 'tool' step to ensure Allure command-line tool is on PATH
+                                    withEnv(["PATH+ALLURE=${tool env.ALLURE_COMMANDLINE_TOOL_NAME}/bin"]) {
+                                        allure([
+                                            reportBuildPolicy: 'ALWAYS',
+                                            results: [[path: env.ALLURE_RESULTS_PATH_INTERNAL]]
+                                        ])
+                                    }
+                                    echo "Allure Report publishing complete."
+                                } else {
+                                    echo "WARNING: Allure results directory found but empty at ${env.ALLURE_RESULTS_PATH_INTERNAL}. Skipping Allure Report publishing."
+                                }
+                            } else {
+                                echo "WARNING: Allure results directory not found at ${env.ALLURE_RESULTS_PATH_INTERNAL}. Skipping Allure Report publishing."
+                            }
+                        } // End of script block
                     } // End of withEnv
                 } // End of node('jenkins')
             } // End of steps
-            // Removed the post block from inside the stage, as reporting is now handled within steps
+            // Removed the `post` block from inside the stage, as the failure check is now combined
+            // with the pytestExitCode check and the report publishing is in the main steps block.
+            post {
+                // This post block will run after all steps in this stage are completed.
+                failure {
+                    echo "Tests against Render Dev FAILED! Build will stop here. ❌"
+                }
+            }
         }
 
         stage('Deploy to Render Live (CD Phase)') {
@@ -181,8 +182,7 @@ pipeline {
                 script {
                     echo "Cleaning up workspace and removing custom Docker image..."
                     // Remove the generated report files from the host workspace
-                    // These are relative to the Jenkins workspace
-                    sh "rm -rf test-results allure-results"
+                    sh "rm -rf ${env.JUNIT_REPORT_FILE_INTERNAL.split('/')[0]} ${env.ALLURE_RESULTS_PATH_INTERNAL}" // Use env vars for consistency
                     // Remove the custom Docker image to save space
                     sh "docker rmi -f ${env.FULL_DOCKER_IMAGE_NAME}"
                 }
