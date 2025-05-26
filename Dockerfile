@@ -23,13 +23,13 @@ RUN /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 # Clean up the copied requirements.txt to keep the image lean
 RUN rm requirements.txt
 
-# --- START IMPORTANT ADDITIONS FOR CHROME HEADLESS RELIABILITY (REFINED) ---
+# --- START IMPORTANT ADDITIONS FOR CHROME HEADLESS RELIABILITY (REFINED AGAIN) ---
 
 # Install essential runtime dependencies for Chrome in a headless environment.
-# Removed libasound2 and libgconf-2-4 as they are causing issues on Ubuntu Noble.
-# Added xkb-data which can sometimes be a missing dependency for fonts.
+# We've removed problematic packages. Adding more common fonts and a display utility.
 RUN apt-get update && apt-get install -y \
     fonts-liberation \
+    fonts-noto-color-emoji \
     libappindicator3-1 \
     libatk-bridge2.0-0 \
     libatk1.0-0 \
@@ -55,8 +55,14 @@ RUN apt-get update && apt-get install -y \
     libxtst6 \
     xdg-utils \
     xkb-data \
+    xvfb \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
+
+# Set up a virtual display for Chrome, even in headless mode.
+# This can sometimes resolve deep-seated rendering issues.
+ENV DISPLAY=:99
+ENV XAUTHORITY=/tmp/.Xauthority
 
 # Ensure the seluser's home directory has correct permissions BEFORE switching user.
 # This is crucial for Chrome to write its user data and for Selenium Manager's cache.
