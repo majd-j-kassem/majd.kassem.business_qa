@@ -1,5 +1,5 @@
 # Use the official Selenium standalone Chrome image as the base
-FROM selenium/standalone-chrome:4.20.0-20240520
+FROM selenium/standalone-chrome:latest
 
 # Switch to the root user temporarily to install dependencies
 # This bypasses the permission issues faced by the 'seluser'
