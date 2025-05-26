@@ -31,8 +31,7 @@ def oneTimeSetUp(request, browser, base_url_from_cli):
         driver_options.add_argument('--headless')
         driver_options.add_argument('--no-sandbox')
         driver_options.add_argument('--disable-dev-shm-usage')
-        #driver_options.add_argument('--window-size=2560,1440') # Larger size for headless
-        driver.set_window_size(1920, 1080)
+        driver_options.add_argument('--window-size=1920,1080') # Larger size for headless
          # --- ADD THESE TWO LINES ---
         # Forces Chrome to use a unique, temporary user data directory for each run.
         # os.getpid() makes it unique per process, good for parallel execution (though not happening here).
