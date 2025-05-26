@@ -23,7 +23,6 @@ pipeline {
         // --- Name for your custom Docker image ---
         CUSTOM_DOCKER_IMAGE_NAME = 'majd-selenium-runner'
     }
-    def dockerImage
     stages {
         stage('Checkout Selenium Test Code') {
             steps {
