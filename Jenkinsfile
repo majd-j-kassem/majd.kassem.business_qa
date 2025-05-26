@@ -10,11 +10,11 @@ pipeline {
 
         // --- IMPORTANT: Render Live Service ID ---
         // Get this from your Render Dashboard URL for your Live service (e.g., srv-xxxxxxxxxxxxxxxxx)
-        RENDER_LIVE_SERVICE_ID = 'srv-d0h686q4d50c73c6g410' // <<-- REPLACE THIS!
+        RENDER_LIVE_SERVICE_ID = 'srv-d0h686q4d50c73c6g410' // This is now correctly set
 
         // --- IMPORTANT: Jenkins Credential ID for Render API Key ---
         // This MUST match the ID you gave your Secret text credential in Jenkins.
-        RENDER_API_KEY_CREDENTIAL_ID = 'render-api-key' // <<-- ENSURE THIS MATCHES YOUR JENKINS CREDENTIAL ID
+        RENDER_API_KEY_CREDENTIAL_ID = 'render-api-key'
 
         // --- Consistent path for your JUnit XML report ---
         // This path is relative to the workspace INSIDE the Docker container.
@@ -22,7 +22,13 @@ pipeline {
 
         // --- Name for your custom Docker image ---
         CUSTOM_DOCKER_IMAGE_NAME = 'majd-selenium-runner'
+
+        // --- Full Docker image name including tag, derived from BUILD_NUMBER ---
+        FULL_DOCKER_IMAGE_NAME = "${CUSTOM_DOCKER_IMAGE_NAME}:${BUILD_NUMBER}"
     }
+
+    // !! IMPORTANT: There should be NO 'def dockerImage' line here. It's removed. !!
+
     stages {
         stage('Checkout Selenium Test Code') {
             steps {
@@ -38,26 +44,34 @@ pipeline {
         stage('Build Custom Test Image') {
             steps {
                 script {
-                    echo "Building custom Docker image: ${env.CUSTOM_DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}"
-                    // Build the Docker image from the Dockerfile in the current workspace ('.')
-                    // This image will now include all your Python dependencies
-                    dockerImage = docker.build("${env.CUSTOM_DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}", ".")
-                    echo "Custom Docker Image built: ${dockerImage.id}"
+                    echo "Building custom Docker image: ${env.FULL_DOCKER_IMAGE_NAME}"
+                    // Build the Docker image. It will be automatically tagged with FULL_DOCKER_IMAGE_NAME
+                    docker.build(env.FULL_DOCKER_IMAGE_NAME, ".")
+                    echo "Custom Docker Image built: ${env.FULL_DOCKER_IMAGE_NAME}"
+                    // Note: We are no longer assigning to a 'dockerImage' variable here for later use
+                    // because we will refer to the image by its name in the 'agent' directive.
                 }
             }
         }
 
         stage('Run Tests - Render Dev (CI Phase)') {
+            // **CRITICAL CHANGE HERE:**
+            // Use the custom Docker image you just built as the agent for THIS stage.
+            // All steps within this stage will now run inside this Docker container.
+            agent {
+                docker {
+                    image env.FULL_DOCKER_IMAGE_NAME // Refer to the image by its full tag
+                    // Define volume mounts here, which apply to this specific Docker agent
+                    args """-v /dev/shm:/dev/shm -v ${WORKSPACE}/test-results:/home/seluser/test-results"""
+                }
+            }
             steps {
-                script {
-                    // Use the custom Docker image for this stage
-                    dockerImage.run("""-v /dev/shm:/dev/shm -v ${WORKSPACE}/test-results:/home/seluser/test-results""") {
-                        echo "Running tests against Render Dev: ${env.RENDER_DEV_URL} inside custom Docker image."
-                        // Create directory for JUnit report inside the container
-                        sh "mkdir -p test-results"
-                        // Run pytest. Dependencies are now pre-installed in the image.
-                        sh "pytest src/tests --browser chrome-headless --base-url ${env.RENDER_DEV_URL} --junitxml=${env.JUNIT_REPORT_FILE}"
-                    }
+                script { // The 'script' block is still needed for imperative steps within Declarative.
+                    echo "Running tests against Render Dev: ${env.RENDER_DEV_URL} inside custom Docker image."
+                    // Create directory for JUnit report inside the container
+                    sh "mkdir -p test-results" // This directory is now inside the container, mapped to host.
+                    // Run pytest. Dependencies are now pre-installed in the image.
+                    sh "pytest src/tests --browser chrome-headless --base-url ${env.RENDER_DEV_URL} --junitxml=${env.JUNIT_REPORT_FILE}"
                 }
             }
             post {
@@ -108,7 +122,7 @@ pipeline {
                     // Remove the generated JUnit report file from the host workspace
                     sh "rm -f ${WORKSPACE}/test-results/junit-report.xml"
                     // Remove the custom Docker image to save space
-                    sh "docker rmi -f ${env.CUSTOM_DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}"
+                    sh "docker rmi -f ${env.FULL_DOCKER_IMAGE_NAME}" // Use the env variable for removal
                 }
             }
         }
