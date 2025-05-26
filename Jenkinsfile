@@ -104,12 +104,11 @@ pipeline {
                     }
                 }
             }
-            post {
+           post {
                 always {
                     script {
                         // --- JUnit Report Publishing ---
-                        // These paths are relative to the Jenkins workspace on the HOST.
-                        def junitReportPath = "test-results/junit-report.xml"
+                        def junitReportPath = "test-results/junit-report.xml" // Path relative to Jenkins workspace
                         if (fileExists(junitReportPath)) {
                             echo "Found JUnit report file: ${junitReportPath}. Publishing results."
                             junit junitReportPath
@@ -118,16 +117,26 @@ pipeline {
                         }
 
                         // --- Allure Report Publishing ---
-                        def allureResultsDir = "allure-results" // Path relative to Jenkins workspace on the HOST
-                        if (fileExists(allureResultsDir) && sh(script: "ls -A ${allureResultsDir} | wc -l", returnStdout: true).trim() as int > 0) { // Check if directory exists and is not empty
-                            echo "Found Allure results in ${allureResultsDir}. Publishing Allure Report."
-                            allure([
-                                reportBuildPolicy: 'ALWAYS',
-                                results: [[path: allureResultsDir]]
-                            ])
-                            echo "Allure Report publishing complete."
+                        def allureResultsDir = "allure-results" // This is the path relative to the Jenkins workspace
+                        if (fileExists(allureResultsDir)) { // Check if the directory exists
+                            // Now, check if the directory is empty by getting its content count
+                            def fileCount = sh(script: "ls -A ${allureResultsDir} | wc -l", returnStdout: true).trim() as int
+
+                            if (fileCount > 0) {
+                                echo "Found Allure results in ${allureResultsDir}. Publishing Allure Report."
+                                // Ensure you have the Allure Jenkins Plugin installed and
+                                // Allure Commandline tool configured in Jenkins (Manage Jenkins -> Tools)
+                                // The 'allure' step uses the path relative to the Jenkins workspace.
+                                allure([
+                                    reportBuildPolicy: 'ALWAYS',
+                                    results: [[path: allureResultsDir]]
+                                ])
+                                echo "Allure Report publishing complete."
+                            } else {
+                                echo "WARNING: Allure results directory found but empty at ${allureResultsDir}. Skipping Allure Report publishing."
+                            }
                         } else {
-                            echo "WARNING: Allure results directory not found or empty at ${allureResultsDir}. Skipping Allure Report publishing."
+                            echo "WARNING: Allure results directory not found at ${allureResultsDir}. Skipping Allure Report publishing."
                         }
                     }
                 }
