@@ -16,13 +16,11 @@ pipeline {
         // This MUST match the ID you gave your Secret text credential in Jenkins.
         RENDER_API_KEY_CREDENTIAL_ID = 'render-api-key'
 
-        // --- Consistent path for your JUnit XML report ---
-        // This path is relative to the workspace INSIDE the Docker container.
-        JUNIT_REPORT_FILE = 'test-results/junit-report.xml'
-
-        // --- Consistent path for Allure raw data inside the Docker container's mounted workspace ---
-        // NEW ENVIRONMENT VARIABLE FOR ALLURE RESULTS
-        ALLURE_RESULTS_PATH_IN_CONTAINER = "/home/seluser/allure-results"
+        // --- NEW: Simplified internal paths for reports ---
+        // These paths will now be relative to the Jenkins workspace INSIDE the container,
+        // which is mounted to the same path as on the host.
+        JUNIT_REPORT_FILE_INTERNAL = 'test-results/junit-report.xml'
+        ALLURE_RESULTS_PATH_INTERNAL = 'allure-results' // No longer /home/seluser/...
 
         // --- Name for your custom Docker image ---
         CUSTOM_DOCKER_IMAGE_NAME = 'majd-selenium-runner'
@@ -67,36 +65,31 @@ pipeline {
                         script {
                             echo "Running tests against Render Dev: ${env.BASE_URL} inside custom Docker image."
 
-                            // --- IMPORTANT PERMISSION FIXES ---
+                            // --- IMPORTANT PERMISSION FIXES (Executed on Jenkins Host) ---
                             // 1. Create directories on the Jenkins host's workspace
                             //    These directories will be mounted into the Docker container.
                             sh 'mkdir -p test-results allure-results'
 
                             // 2. Set permissions for these directories ON THE JENKINS HOST.
-                            //    'chmod 777' is broad but ensures the user in the container
-                            //    can write to these mounted volumes.
+                            //    This should be sufficient as Docker usually respects host permissions for mounted volumes.
                             sh 'chmod -R 777 test-results allure-results'
-
 
                             // Now, run pytest inside the Docker container
                             // Use the FULL_DOCKER_IMAGE_NAME that was built earlier
                             docker.image(env.FULL_DOCKER_IMAGE_NAME).inside {
-                                // IMPORTANT: Inside the container, also ensure permissions on the mounted paths.
-                                // This is a belt-and-suspenders approach to permission issues.
-                                sh "chmod -R 777 ${ALLURE_RESULTS_PATH_IN_CONTAINER}"
-                                sh "chmod -R 777 /home/seluser/test-results" // Ensure JUnit path is also writable
-
                                 // --- DEBUGGING COMMANDS START HERE ---
                                 echo "--- Inside Docker Container (Before Pytest) ---"
                                 sh 'pwd' // Show current working directory inside container
                                 sh 'ls -la' // List contents of current working directory
-                                sh 'ls -la test-results' // Check if test-results directory exists and permissions
-                                sh 'ls -la allure-results' // Check if allure-results directory exists and permissions
+                                // Check if the *mounted* directories exist and have correct permissions from container's perspective
+                                sh 'ls -la test-results'
+                                sh 'ls -la allure-results'
                                 echo "Attempting to run pytest..."
 
                                 // Run pytest.
-                                // Capture the exit code of pytest to check if it truly succeeded.
-                                def pytestExitCode = sh(script: "pytest src/tests --browser chrome-headless --base-url ${env.BASE_URL} --junitxml=${JUNIT_REPORT_FILE} --alluredir=${ALLURE_RESULTS_PATH_IN_CONTAINER}", returnStatus: true)
+                                // Use the simplified internal paths that are relative to the container's working directory.
+                                // The Docker plugin automatically handles the base workspace volume mount.
+                                def pytestExitCode = sh(script: "pytest src/tests --browser chrome-headless --base-url ${env.BASE_URL} --junitxml=${JUNIT_REPORT_FILE_INTERNAL} --alluredir=${ALLURE_RESULTS_PATH_INTERNAL}", returnStatus: true)
 
                                 echo "Pytest command finished with exit code: ${pytestExitCode}"
 
