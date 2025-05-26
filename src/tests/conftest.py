@@ -4,14 +4,14 @@ from base.web_driver_factory import WebDriverFactory
 from selenium.webdriver.chrome.options import Options
 import os
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def setUp():
     print("Running method level setUp")
     yield
     print("Running method level tearDown")
 
 
-@pytest.yield_fixture(scope="class")
+@pytest.fixture(scope="class")
 def oneTimeSetUp(request, browser, base_url_from_cli):
     print(f"Running one time setUp for browser: {browser}")
     driver_options = None # Initialize to None
