@@ -42,7 +42,7 @@ pipeline {
                     echo "Building custom Docker image: ${env.CUSTOM_DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}"
                     // Build the Docker image from the Dockerfile in the current workspace ('.')
                     // This image will now include all your Python dependencies
-                    dockerImage = docker.build("${env.CUSTOM_DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}", ".")
+                    def dockerImage = docker.build("${env.CUSTOM_DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}", ".")
                     echo "Custom Docker Image built: ${dockerImage.id}"
                 }
             }
