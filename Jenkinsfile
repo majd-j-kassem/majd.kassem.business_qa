@@ -10,7 +10,7 @@ pipeline {
 
         // --- IMPORTANT: Render Live Service ID ---
         // Get this from your Render Dashboard URL for your Live service (e.g., srv-xxxxxxxxxxxxxxxxx)
-        RENDER_LIVE_SERVICE_ID = 'srv-your-render-live-service-id-here' // <<-- REPLACE THIS!
+        RENDER_LIVE_SERVICE_ID = 'srv-d0h686q4d50c73c6g410' // <<-- REPLACE THIS!
 
         // --- IMPORTANT: Jenkins Credential ID for Render API Key ---
         // This MUST match the ID you gave your Secret text credential in Jenkins.
@@ -23,7 +23,7 @@ pipeline {
         // --- Name for your custom Docker image ---
         CUSTOM_DOCKER_IMAGE_NAME = 'majd-selenium-runner'
     }
-
+    def dockerImage
     stages {
         stage('Checkout Selenium Test Code') {
             steps {
@@ -42,7 +42,7 @@ pipeline {
                     echo "Building custom Docker image: ${env.CUSTOM_DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}"
                     // Build the Docker image from the Dockerfile in the current workspace ('.')
                     // This image will now include all your Python dependencies
-                    def dockerImage = docker.build("${env.CUSTOM_DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}", ".")
+                    dockerImage = docker.build("${env.CUSTOM_DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}", ".")
                     echo "Custom Docker Image built: ${dockerImage.id}"
                 }
             }
