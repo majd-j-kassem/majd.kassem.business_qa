@@ -2,7 +2,7 @@ pipeline {
     agent {
         // You can specify an agent label here, e.g., agent { label 'my-linux-agent' }
         // For now, it will run on any available agent
-        label 'jenkins-agent' // Example label, ensure you have an agent with this label or remove if running on main controller
+        label 'jenkins' // Example label, ensure you have an agent with this label or remove if running on main controller
     }
     options {
         // Set a timeout for the entire pipeline (e.g., 60 minutes)
