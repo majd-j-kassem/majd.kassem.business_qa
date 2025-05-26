@@ -134,7 +134,7 @@ pipeline {
                 script {
                     echo "Cleaning up workspace and removing custom Docker image..."
                     // Remove the generated report files from the host workspace
-                    sh "rm -rf ${WORKSPACE}/test-results ${WORKSPACE}/allure-results ${WORKSPACE}/allure-report" # <--- MODIFIED: Clean up Allure directories too
+                    sh "rm -rf ${WORKSPACE}/test-results ${WORKSPACE}/allure-results ${WORKSPACE}/allure-report"
                     // Remove the custom Docker image to save space
                     sh "docker rmi -f ${env.FULL_DOCKER_IMAGE_NAME}"
                 }
