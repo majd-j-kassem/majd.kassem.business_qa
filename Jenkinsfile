@@ -68,7 +68,7 @@ pipeline {
                     // Create directory for JUnit report inside the container
                     sh "mkdir -p ${WORKSPACE}/test-results" // This directory is now inside the container, mapped to host.
                     // NEW: Create directory for Allure results on the host
-                    sh "mkdir -p ${WORKSPACE}/allure-results" 
+                    sh "mkdir chmod -R 777 -p ${WORKSPACE}/allure-results" 
 
                     // Run pytest. Dependencies are now pre-installed in the image.
                     // MODIFIED: Added --alluredir to pytest command
