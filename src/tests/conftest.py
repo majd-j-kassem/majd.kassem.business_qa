@@ -2,6 +2,7 @@ import pytest
 from selenium import webdriver
 from base.web_driver_factory import WebDriverFactory
 from selenium.webdriver.chrome.options import Options
+import os
 
 @pytest.yield_fixture()
 def setUp():
@@ -31,6 +32,14 @@ def oneTimeSetUp(request, browser, base_url_from_cli):
         driver_options.add_argument('--no-sandbox')
         driver_options.add_argument('--disable-dev-shm-usage')
         driver_options.add_argument('--window-size=2560,1440') # Larger size for headless
+         # --- ADD THESE TWO LINES ---
+        # Forces Chrome to use a unique, temporary user data directory for each run.
+        # os.getpid() makes it unique per process, good for parallel execution (though not happening here).
+        temp_user_data_dir = os.path.join('/tmp', f'chrome_user_data_{os.getpid()}')
+        driver_options.add_argument(f"--user-data-dir={temp_user_data_dir}")
+        # Add remote debugging port - useful for debugging headless Chrome if needed
+        driver_options.add_argument("--remote-debugging-port=9222")
+        # --- END ADDITIONS ---
         print("Configuring Chrome for headless mode.")
         is_headless = True
 
