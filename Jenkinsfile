@@ -29,9 +29,10 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 script {
-                    sh 'pip install --upgrade pip'
-                    sh 'pip install -r requirements.txt'
-                    sh 'pip install pytest'
+                    sh 'pip install --upgrade pip --user' // Add --user here too
+                    sh 'pip install -r requirements.txt --user' // <--- ADDED --user HERE
+                    sh 'pip install pytest --user' // <--- ADDED --user HERE (if you keep this line)
+                    echo "Python test dependencies installed."
                 }
             }
         }
