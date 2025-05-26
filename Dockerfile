@@ -1,5 +1,7 @@
 # Use the official Selenium standalone Chrome image as the base
-FROM majdkassemt/selenium-qa:local-dev
+FROM majdkassemt/selenium-qa:latest
+#majdkassemt/selenium-qa
+#
 
 # Switch to the root user temporarily to install dependencies
 # This bypasses the permission issues faced by the 'seluser'
