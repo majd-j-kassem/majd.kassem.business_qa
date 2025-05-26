@@ -1,62 +1,41 @@
 pipeline {
-    agent {
-        // You can specify an agent label here, e.g., agent { label 'my-linux-agent' }
-        // For now, it will run on any available agent
-        label 'jenkins' // Example label, ensure you have an agent with this label or remove if running on main controller
-    }
-    options {
-        // Set a timeout for the entire pipeline (e.g., 60 minutes)
-        timeout(time: 60, unit: 'MINUTES')
-        // Discard old builds to save disk space
-        buildDiscarder(logRotator(numToKeepStr: '5'))
-        // Enable timestamps in console output
-        timestamps()
-        // Prevent concurrent builds
-        disableConcurrentBuilds()
-    }
-    parameters {
-        string(name: 'BROWSER', defaultValue: 'chrome-headless', description: 'Browser to run tests on (e.g., chrome, firefox, chrome-headless, firefox-headless)')
-        string(name: 'BASE_URL_DEV', defaultValue: 'https://majd-kassem-business-dev.onrender.com/', description: 'Base URL for the development environment')
-        string(name: 'BASE_URL_LIVE', defaultValue: 'https://majd-kassem-business.onrender.com/', description: 'Base URL for the live environment')
-        string(name: 'RENDER_SERVICE_ID_DEV', defaultValue: 'srv-d0h686q4d50c73c6g410', description: 'Render Service ID for Dev environment deployment')
-        string(name: 'RENDER_SERVICE_ID_LIVE', defaultValue: 'srv-d0h686q4d50c73c6g410', description: 'Render Service ID for Live environment deployment') // You might want a different one for Live
-    }
+    // We use 'agent any' at the top level because we'll build our custom Docker image
+    // in a specific stage and then use that image in subsequent stages.
+    agent any
 
     environment {
-        // Define environment variables here, e.g., for secrets from Jenkins Credentials
-        // This makes sure the variables are available throughout the pipeline
-        // Ensure 'RENDER_API_KEY_CREDENTIAL_ID' matches your Jenkins credential ID
-        RENDER_API_KEY = credentials('RENDER_API_KEY_CREDENTIAL_ID')
-        // Define the path to your Dockerfile for clarity
-        DOCKERFILE_PATH = 'Dockerfile'
-        // Increment build number for Docker image tag
-        BUILD_TAG = "majd-selenium-runner:${BUILD_NUMBER}"
-        // Define test report paths
-        JUNIT_REPORT_PATH = "test-results/junit-report.xml"
-        ALLURE_RESULTS_DIR = "allure-results"
-        ALLURE_COMMANDLINE_HOME = tool 'Allure_2.27.0' // Ensure this matches your configured Allure commandline tool name in Jenkins
+        // --- Render Service URLs ---
+        RENDER_DEV_URL = 'https://majd-kassem-business-dev.onrender.com/'
+        RENDER_PROD_URL = 'https://majd-kassem-business.onrender.com/'
+
+        // --- IMPORTANT: Render Live Service ID ---
+        // Get this from your Render Dashboard URL for your Live service (e.g., srv-xxxxxxxxxxxxxxxxx)
+        RENDER_LIVE_SERVICE_ID = 'srv-d0h686q4d50c73c6g410' // This is now correctly set
+
+        // --- IMPORTANT: Jenkins Credential ID for Render API Key ---
+        // This MUST match the ID you gave your Secret text credential in Jenkins.
+        RENDER_API_KEY_CREDENTIAL_ID = 'render-api-key'
+
+        // --- NEW: Simplified internal paths for reports ---
+        // These paths will now be relative to the Jenkins workspace INSIDE the container,
+        // which is mounted to the same path as on the host.
+        JUNIT_REPORT_FILE_INTERNAL = 'test-results/junit-report.xml'
+        ALLURE_RESULTS_PATH_INTERNAL = 'allure-results' // No longer /home/seluser/...
+
+        // --- Name for your custom Docker image ---
+        CUSTOM_DOCKER_IMAGE_NAME = 'majd-selenium-runner'
+
+        // --- Full Docker image name including tag, derived from BUILD_NUMBER ---
+        FULL_DOCKER_IMAGE_NAME = "${CUSTOM_DOCKER_IMAGE_NAME}:${BUILD_NUMBER}"
     }
 
     stages {
-        stage('Declarative: Checkout SCM') {
-            steps {
-                checkout scm
-            }
-        }
-
         stage('Checkout Selenium Test Code') {
             steps {
                 script {
-                    // Assuming your Selenium tests are in the same repository.
-                    // If they are in a different repo, you would add another 'git' step here.
-                    // Example if in a separate repo:
-                    // git branch: 'main', credentialsId: 'your-git-credential-id', url: 'https://github.com/your-org/your-selenium-repo.git'
-                    // For now, assuming current repo contains the tests.
-                    echo "Checking out test code from the current repository..."
-                    // It's already checked out in the Declarative Checkout SCM stage,
-                    // but you might want to re-checkout here if you have submodules or specific needs.
-                    // For this setup, we'll just confirm the presence of key files
-                    sh 'ls -la'
+                    // This checks out your Selenium test automation project from GitHub
+                    git branch: 'dev', url: 'https://github.com/majd-j-kassem/majd.kassem.business_qa.git'
+                    sh 'ls -la' // List files to verify checkout
                     echo "Selenium test code checked out."
                 }
             }
@@ -65,92 +44,127 @@ pipeline {
         stage('Build Custom Test Image') {
             steps {
                 script {
-                    echo "Building custom Docker image: ${BUILD_TAG}"
-                    // Build the Docker image based on the Dockerfile in the workspace
-                    dir ('.') { // Ensure we are in the root of the workspace
-                        docker.build("${BUILD_TAG}", "-f ${DOCKERFILE_PATH} .")
-                    }
-                    echo "Custom Docker Image built: ${BUILD_TAG}"
+                    echo "Building custom Docker image: ${env.FULL_DOCKER_IMAGE_NAME}"
+                    // Build the Docker image. It will be automatically tagged with FULL_DOCKER_IMAGE_NAME
+                    docker.build(env.FULL_DOCKER_IMAGE_NAME, ".")
+                    echo "Custom Docker Image built: ${env.FULL_DOCKER_IMAGE_NAME}"
                 }
             }
         }
 
         stage('Run Tests - Render Dev (CI Phase)') {
-            agent {
-                // Using a dedicated agent for running tests might be beneficial for resources
-                // and to avoid issues with the main controller's Docker setup.
-                label 'jenkins-agent'
-            }
             steps {
-                script {
-                    echo "Running tests against Render Dev: ${BASE_URL_DEV} inside custom Docker image."
-                    // Create directories for test results inside the workspace
-                    sh "mkdir -p ${JUNIT_REPORT_PATH.replace('/junit-report.xml', '')} ${ALLURE_RESULTS_DIR}"
-                    sh "chmod -R 777 ${JUNIT_REPORT_PATH.replace('/junit-report.xml', '')} ${ALLURE_RESULTS_DIR}"
+                node('jenkins') {
+                    checkout scm
 
+                    withEnv(["BASE_URL=${RENDER_DEV_URL}"]) {
+                        script {
+                            echo "Running tests against Render Dev: ${env.BASE_URL} inside custom Docker image."
 
-                    // Run tests inside the Docker container
-                    docker.image("${BUILD_TAG}").inside {
-                        echo "--- Inside Docker Container (Before Pytest) ---"
-                        sh 'pwd'
-                        sh 'ls -la'
-                        sh "ls -la ${JUNIT_REPORT_PATH.replace('/junit-report.xml', '')}"
-                        sh "ls -la ${ALLURE_RESULTS_DIR}"
+                            // --- IMPORTANT PERMISSION FIXES (Executed on Jenkins Host) ---
+                            // 1. Create directories on the Jenkins host's workspace
+                            sh 'mkdir -p test-results allure-results'
+                            // 2. Set permissions for these directories ON THE JENKINS HOST.
+                            sh 'chmod -R 777 test-results allure-results'
 
-                        echo "Attempting to run pytest..."
-                        // Execute pytest, outputting JUnit XML and Allure results
-                        // Ensure paths are correct relative to the container's working directory
-                        def pytestExitCode = sh(script: "pytest src/tests --browser ${BROWSER} --base-url ${BASE_URL_DEV} --junitxml=${JUNIT_REPORT_PATH} --alluredir=${ALLURE_RESULTS_DIR}", returnStatus: true)
+                            // Now, run pytest inside the Docker container
+                            docker.image(env.FULL_DOCKER_IMAGE_NAME).inside {
+                                echo "--- Inside Docker Container (Before Pytest) ---"
+                                sh 'pwd'
+                                sh 'ls -la'
+                                sh 'ls -la test-results'
+                                sh 'ls -la allure-results'
+                                echo "Attempting to run pytest..."
 
-                        echo "Pytest command finished with exit code: ${pytestExitCode}"
+                                // The paths for --junitxml and --alluredir should be relative
+                                // to the WORKDIR inside the container.
+                                // Since your Dockerfile sets WORKDIR /home/seluser,
+                                // and then you are running in /var/lib/jenkins/workspace/y-app-dev-deploy-and-tes@2
+                                // due to the Jenkins Docker plugin's mounting...
+                                // The key is to ensure the mount is correct.
+                                // Let's try simplifying the pytest output paths to ensure they write
+                                // directly into the mounted directories.
 
-                        echo "--- Inside Docker Container (After Pytest) ---"
-                        sh "ls -la ${JUNIT_REPORT_PATH.replace('/junit-report.xml', '')}"
-                        sh "ls -la ${ALLURE_RESULTS_DIR}"
+                                // Pytest command will write to the mounted volumes:
+                                // /var/lib/jenkins/workspace/y-app-dev-deploy-and-tes@2/test-results/junit-report.xml
+                                // /var/lib/jenkins/workspace/y-app-dev-deploy-and-tes@2/allure-results
+                                def pytestExitCode = sh(script: "pytest src/tests --browser chrome-headless --base-url ${env.BASE_URL} --junitxml=${WORKSPACE}/test-results/junit-report.xml --alluredir=${WORKSPACE}/allure-results", returnStatus: true)
 
-                        // --- JUnit Report Publishing (MOVED HERE) ---
-                        if (fileExists(JUNIT_REPORT_PATH)) {
-                            echo "Found JUnit report file: ${JUNIT_REPORT_PATH}. Publishing results."
-                            junit JUNIT_REPORT_PATH
+                                echo "Pytest command finished with exit code: ${pytestExitCode}"
+
+                                echo "--- Inside Docker Container (After Pytest) ---"
+                                sh 'ls -la test-results'
+                                sh 'ls -la allure-results'
+
+                                if (pytestExitCode != 0) {
+                                    error "Pytest tests failed (exit code: ${pytestExitCode}). Check logs above for details."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+           post {
+                always {
+                    script {
+                        // --- JUnit Report Publishing ---
+                        def junitReportPath = "test-results/junit-report.xml" // Path relative to Jenkins workspace
+                        if (fileExists(junitReportPath)) {
+                            echo "Found JUnit report file: ${junitReportPath}. Publishing results."
+                            junit junitReportPath
                         } else {
-                            echo "WARNING: JUnit report file NOT found at ${JUNIT_REPORT_PATH}. Skipping JUnit publishing."
+                            echo "WARNING: JUnit report file not found at ${junitReportPath}. Skipping JUnit publishing."
                         }
 
-                        // --- Allure Report Publishing (MOVED HERE) ---
-                        if (fileExists(ALLURE_RESULTS_DIR)) {
-                            def fileCount = sh(script: "ls -A ${ALLURE_RESULTS_DIR} | wc -l", returnStdout: true).trim() as int
+                        // --- Allure Report Publishing ---
+                        def allureResultsDir = "allure-results" // This is the path relative to the Jenkins workspace
+                        if (fileExists(allureResultsDir)) { // Check if the directory exists
+                            // Now, check if the directory is empty by getting its content count
+                            def fileCount = sh(script: "ls -A ${allureResultsDir} | wc -l", returnStdout: true).trim() as int
+
                             if (fileCount > 0) {
-                                echo "Found Allure results in ${ALLURE_RESULTS_DIR}. Publishing Allure Report."
+                                echo "Found Allure results in ${allureResultsDir}. Publishing Allure Report."
+                                // Ensure you have the Allure Jenkins Plugin installed and
+                                // Allure Commandline tool configured in Jenkins (Manage Jenkins -> Tools)
                                 // The 'allure' step uses the path relative to the Jenkins workspace.
                                 allure([
                                     reportBuildPolicy: 'ALWAYS',
-                                    results: [[path: ALLURE_RESULTS_DIR]]
+                                    results: [[path: allureResultsDir]]
                                 ])
                                 echo "Allure Report publishing complete."
                             } else {
-                                echo "WARNING: Allure results directory found but empty at ${ALLURE_RESULTS_DIR}. Skipping Allure Report publishing."
+                                echo "WARNING: Allure results directory found but empty at ${allureResultsDir}. Skipping Allure Report publishing."
                             }
                         } else {
-                            echo "WARNING: Allure results directory NOT found at ${ALLURE_RESULTS_DIR}. Skipping Allure Report publishing."
-                        }
-
-                        // Fail the build if pytest didn't exit cleanly
-                        if (pytestExitCode != 0) {
-                            error "Pytest tests failed!"
+                            echo "WARNING: Allure results directory not found at ${allureResultsDir}. Skipping Allure Report publishing."
                         }
                     }
+                }
+                failure {
+                    echo "Tests against Render Dev FAILED! Build will stop here. ❌"
                 }
             }
         }
 
         stage('Deploy to Render Live (CD Phase)') {
+            when {
+                expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+            }
             steps {
                 script {
                     echo "Tests passed. Triggering deployment of the System Under Test to Render Live..."
-                    withCredentials([string(credentialsId: 'RENDER_API_KEY_CREDENTIAL_ID', variable: 'RENDER_API_KEY')]) {
-                        sh "curl -X POST -H 'Authorization: Bearer ${RENDER_API_KEY}' https://api.render.com/v1/services/${RENDER_SERVICE_ID_LIVE}/deploys"
+                    withCredentials([string(credentialsId: env.RENDER_API_KEY_CREDENTIAL_ID, variable: 'RENDER_API_KEY')]) {
+                        sh "curl -X POST -H \"Authorization: Bearer ${RENDER_API_KEY}\" \"https://api.render.com/v1/services/${env.RENDER_LIVE_SERVICE_ID}/deploys\""
                     }
                     echo "Deployment trigger sent to Render Live! Check Render dashboard for status."
+                }
+            }
+            post {
+                failure {
+                    echo "Failed to trigger Render Live deployment! Please check API key, Service ID, or Render status. ❌"
+                }
+                success {
+                    echo "Successfully triggered Render Live deployment. 🎉"
                 }
             }
         }
@@ -159,23 +173,28 @@ pipeline {
             steps {
                 script {
                     echo "Cleaning up workspace and removing custom Docker image..."
-                    sh "rm -rf ${JUNIT_REPORT_PATH.replace('/junit-report.xml', '')} ${ALLURE_RESULTS_DIR}"
-                    sh "docker rmi -f ${BUILD_TAG}"
+                    // Remove the generated report files from the host workspace
+                    sh "rm -rf test-results allure-results" // Relative paths to workspace
+                    // Remove the custom Docker image to save space
+                    sh "docker rmi -f ${env.FULL_DOCKER_IMAGE_NAME}"
                 }
             }
         }
     }
 
     post {
+        // Global actions after the entire pipeline finishes
         always {
-            echo "Pipeline finished for job ${JOB_NAME}, build number ${BUILD_NUMBER}."
+            echo "Pipeline finished for job ${env.JOB_NAME}, build number ${env.BUILD_NUMBER}."
         }
         success {
             echo "Overall pipeline SUCCESS: All tests passed and Render Live deployment triggered. 🎉"
         }
         failure {
-            echo "Overall pipeline FAILED: Tests against Render Dev FAILED! Build will stop here. ❌"
-            // You might want to add additional notifications here for failure
+            echo "Overall pipeline FAILED: Some tests did not pass or deployment failed. ❌"
+        }
+        aborted {
+            echo "Overall pipeline ABORTED: Build was manually stopped. 🚫"
         }
     }
 }
