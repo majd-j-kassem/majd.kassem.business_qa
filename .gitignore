@@ -70,3 +70,4 @@ cover/
 *.dat
 
 *.log
+allure-results/
