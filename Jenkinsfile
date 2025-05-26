@@ -54,51 +54,48 @@ pipeline {
 
         stage('Run Tests - Render Dev (CI Phase)') {
             steps {
-                // The 'node' step is important for specifying where this part of the pipeline runs.
-                // Ensure you have a Jenkins agent (like your Built-in Node) with the label 'jenkins'.
-                // If not, change 'jenkins' to 'master' or 'any' or the label of your agent.
                 node('jenkins') {
-                    checkout scm // Ensure the workspace is clean for this stage
+                    checkout scm
 
-                    // Use withEnv to set BASE_URL for the duration of this block
                     withEnv(["BASE_URL=${RENDER_DEV_URL}"]) {
                         script {
                             echo "Running tests against Render Dev: ${env.BASE_URL} inside custom Docker image."
 
                             // --- IMPORTANT PERMISSION FIXES (Executed on Jenkins Host) ---
                             // 1. Create directories on the Jenkins host's workspace
-                            //    These directories will be mounted into the Docker container.
                             sh 'mkdir -p test-results allure-results'
-
                             // 2. Set permissions for these directories ON THE JENKINS HOST.
-                            //    This should be sufficient as Docker usually respects host permissions for mounted volumes.
                             sh 'chmod -R 777 test-results allure-results'
 
                             // Now, run pytest inside the Docker container
-                            // Use the FULL_DOCKER_IMAGE_NAME that was built earlier
                             docker.image(env.FULL_DOCKER_IMAGE_NAME).inside {
-                                // --- DEBUGGING COMMANDS START HERE ---
                                 echo "--- Inside Docker Container (Before Pytest) ---"
-                                sh 'pwd' // Show current working directory inside container
-                                sh 'ls -la' // List contents of current working directory
-                                // Check if the *mounted* directories exist and have correct permissions from container's perspective
+                                sh 'pwd'
+                                sh 'ls -la'
                                 sh 'ls -la test-results'
                                 sh 'ls -la allure-results'
                                 echo "Attempting to run pytest..."
 
-                                // Run pytest.
-                                // Use the simplified internal paths that are relative to the container's working directory.
-                                // The Docker plugin automatically handles the base workspace volume mount.
-                                def pytestExitCode = sh(script: "pytest src/tests --browser chrome-headless --base-url ${env.BASE_URL} --junitxml=${JUNIT_REPORT_FILE_INTERNAL} --alluredir=${ALLURE_RESULTS_PATH_INTERNAL}", returnStatus: true)
+                                // The paths for --junitxml and --alluredir should be relative
+                                // to the WORKDIR inside the container.
+                                // Since your Dockerfile sets WORKDIR /home/seluser,
+                                // and then you are running in /var/lib/jenkins/workspace/y-app-dev-deploy-and-tes@2
+                                // due to the Jenkins Docker plugin's mounting...
+                                // The key is to ensure the mount is correct.
+                                // Let's try simplifying the pytest output paths to ensure they write
+                                // directly into the mounted directories.
+
+                                // Pytest command will write to the mounted volumes:
+                                // /var/lib/jenkins/workspace/y-app-dev-deploy-and-tes@2/test-results/junit-report.xml
+                                // /var/lib/jenkins/workspace/y-app-dev-deploy-and-tes@2/allure-results
+                                def pytestExitCode = sh(script: "pytest src/tests --browser chrome-headless --base-url ${env.BASE_URL} --junitxml=${WORKSPACE}/test-results/junit-report.xml --alluredir=${WORKSPACE}/allure-results", returnStatus: true)
 
                                 echo "Pytest command finished with exit code: ${pytestExitCode}"
 
                                 echo "--- Inside Docker Container (After Pytest) ---"
-                                sh 'ls -la test-results' // Check if junit-report.xml was created
-                                sh 'ls -la allure-results' // Check if allure files were created
-                                // --- DEBUGGING COMMANDS END HERE ---
+                                sh 'ls -la test-results'
+                                sh 'ls -la allure-results'
 
-                                // If pytest failed, ensure the pipeline fails immediately.
                                 if (pytestExitCode != 0) {
                                     error "Pytest tests failed (exit code: ${pytestExitCode}). Check logs above for details."
                                 }
@@ -111,26 +108,22 @@ pipeline {
                 always {
                     script {
                         // --- JUnit Report Publishing ---
-                        def junitReportPath = "test-results/junit-report.xml" // Path relative to Jenkins workspace
+                        // These paths are relative to the Jenkins workspace on the HOST.
+                        def junitReportPath = "test-results/junit-report.xml"
                         if (fileExists(junitReportPath)) {
                             echo "Found JUnit report file: ${junitReportPath}. Publishing results."
                             junit junitReportPath
                         } else {
                             echo "WARNING: JUnit report file not found at ${junitReportPath}. Skipping JUnit publishing."
-                            // If you want the build to fail if no report is found, uncomment the line below:
-                            // error "JUnit report not found. Build will fail."
                         }
 
                         // --- Allure Report Publishing ---
-                        def allureResultsDir = "allure-results" // This is the path relative to the Jenkins workspace
-                        if (fileExists(allureResultsDir)) { // Check if the directory exists (and implicitly, if it contains files)
+                        def allureResultsDir = "allure-results" // Path relative to Jenkins workspace on the HOST
+                        if (fileExists(allureResultsDir) && sh(script: "ls -A ${allureResultsDir} | wc -l", returnStdout: true).trim() as int > 0) { // Check if directory exists and is not empty
                             echo "Found Allure results in ${allureResultsDir}. Publishing Allure Report."
-                            // Ensure you have the Allure Jenkins Plugin installed and
-                            // Allure Commandline tool configured in Jenkins (Manage Jenkins -> Tools)
-                            // The 'allure' step uses the path relative to the Jenkins workspace.
                             allure([
-                                reportBuildPolicy: 'ALWAYS', // Generate report regardless of test outcome
-                                results: [[path: allureResultsDir]] // Path to the raw Allure results
+                                reportBuildPolicy: 'ALWAYS',
+                                results: [[path: allureResultsDir]]
                             ])
                             echo "Allure Report publishing complete."
                         } else {
