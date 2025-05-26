@@ -109,8 +109,8 @@ pipeline {
             }
             post {
                 always {
-                    // Check if the report file exists on the host before trying to publish.
                     script {
+                        // --- JUnit Report Publishing ---
                         def junitReportPath = "test-results/junit-report.xml" // Path relative to Jenkins workspace
                         if (fileExists(junitReportPath)) {
                             echo "Found JUnit report file: ${junitReportPath}. Publishing results."
@@ -119,6 +119,22 @@ pipeline {
                             echo "WARNING: JUnit report file not found at ${junitReportPath}. Skipping JUnit publishing."
                             // If you want the build to fail if no report is found, uncomment the line below:
                             // error "JUnit report not found. Build will fail."
+                        }
+
+                        // --- Allure Report Publishing ---
+                        def allureResultsDir = "allure-results" // This is the path relative to the Jenkins workspace
+                        if (fileExists(allureResultsDir)) { // Check if the directory exists (and implicitly, if it contains files)
+                            echo "Found Allure results in ${allureResultsDir}. Publishing Allure Report."
+                            // Ensure you have the Allure Jenkins Plugin installed and
+                            // Allure Commandline tool configured in Jenkins (Manage Jenkins -> Tools)
+                            // The 'allure' step uses the path relative to the Jenkins workspace.
+                            allure([
+                                reportBuildPolicy: 'ALWAYS', // Generate report regardless of test outcome
+                                results: [[path: allureResultsDir]] // Path to the raw Allure results
+                            ])
+                            echo "Allure Report publishing complete."
+                        } else {
+                            echo "WARNING: Allure results directory not found or empty at ${allureResultsDir}. Skipping Allure Report publishing."
                         }
                     }
                 }
