@@ -74,15 +74,18 @@ pipeline {
 
                             // 2. Set permissions for these directories ON THE JENKINS HOST.
                             //    'chmod 777' is broad but ensures the user in the container
-                            //    can write to these mounted volumes. You can try '775' if you
-                            //    are confident about group permissions.
+                            //    can write to these mounted volumes.
+                            // FIX: Added 'chmod -R 777' back here. You had removed the 'chmod -R 777' command.
                             sh 'chmod -R 777 test-results allure-results'
+
 
                             // Now, run pytest inside the Docker container
                             // Use the FULL_DOCKER_IMAGE_NAME that was built earlier
                             docker.image(env.FULL_DOCKER_IMAGE_NAME).inside {
                                 // IMPORTANT: Inside the container, also ensure permissions on the mounted paths.
                                 // This is a belt-and-suspenders approach to permission issues.
+                                // FIX: Added 'chmod -R 777' back here for the allure-results and test-results paths.
+                                // It seems necessary due to the way docker handles UIDs/GIDs and volume mounts.
                                 sh "chmod -R 777 ${ALLURE_RESULTS_PATH_IN_CONTAINER}"
                                 sh "chmod -R 777 /home/seluser/test-results" // Ensure JUnit path is also writable
 
