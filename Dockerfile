@@ -17,36 +17,27 @@ RUN apt-get update && apt-get install -y \
     # Clean up apt caches to keep image size down
     && rm -rf /var/lib/apt/lists/*
 
-# --- EXPLICITLY INSTALL CHROMEDRIVER ---
+# --- EXPLICITLY INSTALL CHROMEDRIVER (REVISED LOOKUP) ---
 # This is the most crucial part to bypass Selenium Manager's issues.
-# We need to know which version of Chrome is in your base image.
-# You can find this by running `google-chrome --version` inside a container
-# launched from `majdkassemt/selenium-qa:latest`.
-# For example, let's assume it's Chrome 125.0.6422.112 (ADJUST THIS BASED ON YOUR BASE IMAGE'S CHROME VERSION)
-# If your base image keeps Chrome updated, you might need a more dynamic way,
-# but for stability in a custom image, knowing the exact Chrome version is best.
+# We'll fetch the LATEST_STABLE_CHROMEDRIVER_VERSION for the detected Chrome MAJOR version.
 
-# Method 1: Dynamically determine Chrome version and download compatible ChromeDriver (preferred)
 RUN CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1) \
-    && echo "Detected Chrome version from base image: $CHROME_VERSION" \
-    && CHROMEDRIVER_VERSION=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-int.json" | \
-                              grep -oE "\"$CHROME_VERSION\"[^{]*\"chromedriver\":\"([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\"" | \
-                              sed -nE 's/.*"chromedriver":"([^"]+)".*/\1/p') \
-    && echo "Downloading ChromeDriver version: $CHROMEDRIVER_VERSION" \
-    && wget -q https://storage.googleapis.com/chrome-for-testing-public/$CHROMEDRIVER_VERSION/linux64/chromedriver-linux64.zip \
+    && CHROME_MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d. -f1) \
+    && echo "Detected Chrome Major version: $CHROME_MAJOR_VERSION" \
+    && CHROMEDRIVER_INFO_URL=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-int.json" | \
+                              jq -r ".versions[] | select(.version | startswith(\"$CHROME_MAJOR_VERSION.\")) | .chromedriver") \
+    && CHROMEDRIVER_VERSION=$(echo $CHROMEDRIVER_INFO_URL | jq -r ".version") \
+    && CHROMEDRIVER_URL=$(echo $CHROMEDRIVER_INFO_URL | jq -r ".downloads.linux64[0].url") \
+    && echo "Downloading ChromeDriver version: $CHROMEDRIVER_VERSION from URL: $CHROMEDRIVER_URL" \
+    && wget -q "$CHROMEDRIVER_URL" -O chromedriver-linux64.zip \
     && unzip chromedriver-linux64.zip -d /usr/local/bin/ \
     && rm chromedriver-linux64.zip \
     && chmod +x /usr/local/bin/chromedriver \
     && echo "ChromeDriver installed at /usr/local/bin/chromedriver"
 
-# Method 2: Hardcode if dynamic fails or if your base image's Chrome version is fixed
-# Uncomment and use this if Method 1 causes issues:
-# ENV CHROMEDRIVER_VERSION="125.0.6422.112" # <--- IMPORTANT: REPLACE WITH YOUR CHROME VERSION'S COMPATIBLE CHROMEDRIVER
-# RUN wget -q https://storage.googleapis.com/chrome-for-testing-public/$CHROMEDRIVER_VERSION/linux64/chromedriver-linux64.zip \
-#     && unzip chromedriver-linux64.zip -d /usr/local/bin/ \
-#     && rm chromedriver-linux64.zip \
-#     && chmod +x /usr/local/bin/chromedriver \
-#     && echo "ChromeDriver ${CHROMEDRIVER_VERSION} installed at /usr/local/bin/chromedriver"
+# If the above fails because jq isn't found, you might need to install jq:
+# RUN apt-get update && apt-get install -y jq && rm -rf /var/lib/apt/lists/*
+# Then retry the RUN command.
 
 # --- END EXPLICIT CHROMEDRIVER INSTALLATION ---
 
@@ -95,16 +86,10 @@ ENV DISPLAY=:99
 ENV XAUTHORITY=/tmp/.Xauthority
 
 # Ensure the seluser's home directory has correct permissions BEFORE switching user.
-# This is crucial for Chrome to write its user data and for Selenium Manager's cache.
-# Also for temporary directories for Chrome, which often default to /tmp or home dir
 RUN mkdir -p /home/seluser && chown -R seluser:seluser /home/seluser && chmod -R 777 /home/seluser
 
 # Set the working directory for subsequent commands to the seluser's home directory.
-# This is where Jenkins will mount your workspace.
 WORKDIR /home/seluser
 
 # Switch back to the non-root 'seluser' for security
 USER seluser
-
-# You can add any CMD or ENTRYPOINT here if needed for your image
-# For Jenkins, it often overrides the ENTRYPOINT with its own command anyway.
