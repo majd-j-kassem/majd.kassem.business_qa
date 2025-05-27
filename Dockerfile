@@ -15,7 +15,6 @@ RUN apt-get update && apt-get install -y \
     gnupg \
     ca-certificates \
     jq \
-    # Clean up apt caches to keep image size down
     && rm -rf /var/lib/apt/lists/*
 
 # --- EXPLICITLY INSTALL CHROMEDRIVER (REVISED LOOKUP) ---
@@ -23,12 +22,37 @@ RUN apt-get update && apt-get install -y \
 # We'll fetch the LATEST_STABLE_CHROMEDRIVER_VERSION for the detected Chrome MAJOR version.
 
 RUN CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1) \
-    && CHROME_MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d. -f1) \
+    && CHROME_MAJOR_VERSION=$(echo "$CHROME_VERSION" | cut -d. -f1) \
     && echo "Detected Chrome Major version: $CHROME_MAJOR_VERSION" \
-    && CHROMEDRIVER_INFO_URL=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-int.json" | \
+    \
+    # --- DEBUGGING CURL OUTPUT ---
+    && echo "Attempting to curl ChromeDriver info..." \
+    && CHROMEDRIVER_JSON_OUTPUT=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-int.json") \
+    && echo "CURL Exit Code: $?" \
+    && echo "CURL Output Start >>>" \
+    && echo "$CHROMEDRIVER_JSON_OUTPUT" \
+    && echo "<<< CURL Output End" \
+    \
+    # Check if CURL output is empty or not JSON-like
+    && if [ -z "$CHROMEDRIVER_JSON_OUTPUT" ]; then \
+        echo "ERROR: curl returned empty output. Possible network issue or API failure." && exit 1; \
+    fi \
+    && if ! echo "$CHROMEDRIVER_JSON_OUTPUT" | jq -e . > /dev/null; then \
+        echo "ERROR: curl returned non-JSON output. Output was:" && echo "$CHROMEDRIVER_JSON_OUTPUT" && exit 1; \
+    fi \
+    \
+    # Now proceed with jq if checks pass
+    && CHROMEDRIVER_DATA=$(echo "$CHROMEDRIVER_JSON_OUTPUT" | \
                               jq -r ".versions[] | select(.version | startswith(\"$CHROME_MAJOR_VERSION.\")) | .chromedriver") \
-    && CHROMEDRIVER_VERSION=$(echo "$CHROMEDRIVER_INFO_URL" | jq -r ".version") \
-    && CHROMEDRIVER_URL=$(echo "$CHROMEDRIVER_INFO_URL" | jq -r ".downloads.linux64[0].url") \
+    && echo "JQ Parsing Result (CHROMEDRIVER_DATA): $CHROMEDRIVER_DATA" \
+    \
+    # Check if jq found any data
+    && if [ -z "$CHROMEDRIVER_DATA" ] || [ "$CHROMEDRIVER_DATA" = "null" ]; then \
+        echo "ERROR: jq could not find ChromeDriver info for Chrome $CHROME_MAJOR_VERSION. API might have changed or version not found." && exit 1; \
+    fi \
+    \
+    && CHROMEDRIVER_VERSION=$(echo "$CHROMEDRIVER_DATA" | jq -r ".version") \
+    && CHROMEDRIVER_URL=$(echo "$CHROMEDRIVER_DATA" | jq -r ".downloads.linux64[0].url") \
     && echo "Downloading ChromeDriver version: $CHROMEDRIVER_VERSION from URL: $CHROMEDRIVER_URL" \
     && wget -q "$CHROMEDRIVER_URL" -O chromedriver-linux64.zip \
     && unzip chromedriver-linux64.zip -d /usr/local/bin/ \
