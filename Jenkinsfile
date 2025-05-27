@@ -2,6 +2,11 @@ pipeline {
     // We use 'agent any' at the top level because we'll build our custom Docker image
     // in a specific stage and then use that image in subsequent stages.
     agent any
+    triggers {
+        // This 'pollSCM' trigger is linked to the primary SCM
+        // which you've configured in the job to be 'majd.kassem.business.git' (your SUT repo).
+        pollSCM 'H/1 * * * *' // This is already set to poll hourly. You can change to H/5 for every 5 mins.
+    }
 
     environment {
         // --- Render Service URLs ---
@@ -10,7 +15,7 @@ pipeline {
 
         // --- IMPORTANT: Render Live Service ID ---
         // Get this from your Render Dashboard URL for your Live service (e.g., srv-xxxxxxxxxxxxxxxxx)
-        RENDER_LIVE_SERVICE_ID = 'srv-d0h686q4d50c73c6g410' // This is now correctly set
+        RENDER_LIVE_SERVICE_ID = 'srv-d0h686q4d50c73c6g410'
 
         // --- IMPORTANT: Jenkins Credential ID for Render API Key ---
         // This MUST match the ID you gave your Secret text credential in Jenkins.
@@ -20,23 +25,47 @@ pipeline {
         // These paths will now be relative to the Jenkins workspace INSIDE the container,
         // which is mounted to the same path as on the host.
         JUNIT_REPORT_FILE_INTERNAL = 'test-results/junit-report.xml'
-        ALLURE_RESULTS_PATH_INTERNAL = 'allure-results' // No longer /home/seluser/...
+        ALLURE_RESULTS_PATH_INTERNAL = 'allure-results'
 
         // --- Name for your custom Docker image ---
         CUSTOM_DOCKER_IMAGE_NAME = 'majd-selenium-runner'
 
         // --- Full Docker image name including tag, derived from BUILD_NUMBER ---
         FULL_DOCKER_IMAGE_NAME = "${CUSTOM_DOCKER_IMAGE_NAME}:${BUILD_NUMBER}"
+
+        // !!! NEW ENVIRONMENT VARIABLE FOR QA REPO CREDENTIALS !!!
+        // This MUST match the ID you gave your credentials for the QA repo in Jenkins.
+        // You'll need to set this credential ID correctly.
+        QA_REPO_CREDENTIAL_ID = 'majd-qa-repo-credentials' // <<< IMPORTANT: REPLACE WITH YOUR ACTUAL CREDENTIAL ID
     }
 
     stages {
+        // NEW STAGE: Checkout the SUT code (now the primary SCM)
+        stage('Checkout SUT Code') {
+            steps {
+                script {
+                    // This command checks out the repository defined in the job's
+                    // "Source Code Management" section, which you will set to:
+                    // https://github.com/majd-j-kassem/majd.kassem.business.git
+                    checkout scm
+                    echo "System Under Test (SUT) code checked out."
+                }
+            }
+        }
+
+        // ORIGINAL STAGE, MODIFIED: Now checks out the QA Project
         stage('Checkout Selenium Test Code') {
             steps {
                 script {
-                    // This checks out your Selenium test automation project from GitHub
-                    git branch: 'dev', url: 'https://github.com/majd-j-kassem/majd.kassem.business_qa.git'
+                    // Explicitly checkout your QA project repository into a subdirectory.
+                    // It will be checked out into a sub-directory named 'majd.kassem.business_qa'
+                    // within your Jenkins workspace.
+                    // The 'credentialsId' comes from the new environment variable.
+                    git branch: 'dev', // Assuming 'dev' is still the branch for your QA project
+                        credentialsId: env.QA_REPO_CREDENTIAL_ID, // Using env var for credential ID
+                        url: 'https://github.com/majd-j-kassem/majd.kassem.business_qa.git'
                     sh 'ls -la' // List files to verify checkout
-                    echo "Selenium test code checked out."
+                    echo "Selenium test code (QA Project) checked out into 'majd.kassem.business_qa' folder."
                 }
             }
         }
@@ -55,7 +84,8 @@ pipeline {
         stage('Run Tests - Render Dev (CI Phase)') {
             steps {
                 node('jenkins') {
-                    checkout scm
+                    // REMOVED: `checkout scm` here as it's done in the first stage.
+                    // The SUT code is already at the workspace root.
 
                     withEnv(["BASE_URL=${RENDER_DEV_URL}"]) {
                         script {
@@ -63,6 +93,7 @@ pipeline {
 
                             // --- IMPORTANT PERMISSION FIXES (Executed on Jenkins Host) ---
                             // 1. Create directories on the Jenkins host's workspace
+                            // These directories will now be created in the main workspace root.
                             sh 'mkdir -p test-results allure-results'
                             // 2. Set permissions for these directories ON THE JENKINS HOST.
                             sh 'chmod -R 777 test-results allure-results'
@@ -76,19 +107,14 @@ pipeline {
                                 sh 'ls -la allure-results'
                                 echo "Attempting to run pytest..."
 
-                                // The paths for --junitxml and --alluredir should be relative
-                                // to the WORKDIR inside the container.
-                                // Since your Dockerfile sets WORKDIR /home/seluser,
-                                // and then you are running in /var/lib/jenkins/workspace/y-app-dev-deploy-and-tes@2
-                                // due to the Jenkins Docker plugin's mounting...
-                                // The key is to ensure the mount is correct.
-                                // Let's try simplifying the pytest output paths to ensure they write
-                                // directly into the mounted directories.
-
-                                // Pytest command will write to the mounted volumes:
-                                // /var/lib/jenkins/workspace/y-app-dev-deploy-and-tes@2/test-results/junit-report.xml
-                                // /var/lib/jenkins/workspace/y-app-dev-deploy-and-tes@2/allure-results
-                                def pytestExitCode = sh(script: "pytest src/tests --browser chrome-headless --base-url ${env.BASE_URL} --junitxml=${WORKSPACE}/test-results/junit-report.xml --alluredir=${WORKSPACE}/allure-results", returnStatus: true)
+                                // Pytest command needs to be executed from within the QA project directory.
+                                // The tests (src/tests) are located inside 'majd.kassem.business_qa'.
+                                // We are already 'inside' the Docker container, so paths are relative to the container's WORKDIR.
+                                // Jenkins mounts the workspace into the container, so WORKSPACE is valid.
+                                def pytestExitCode = sh(script: """
+                                    cd majd.kassem.business_qa && \
+                                    pytest src/tests --browser chrome-headless --base-url ${env.BASE_URL} --junitxml=${WORKSPACE}/test-results/junit-report.xml --alluredir=${WORKSPACE}/allure-results
+                                """, returnStatus: true)
 
                                 echo "Pytest command finished with exit code: ${pytestExitCode}"
 
@@ -177,6 +203,9 @@ pipeline {
                     sh "rm -rf test-results allure-results" // Relative paths to workspace
                     // Remove the custom Docker image to save space
                     sh "docker rmi -f ${env.FULL_DOCKER_IMAGE_NAME}"
+
+                    // !!! NEW: Clean up the checked out QA project directory !!!
+                    sh "rm -rf majd.kassem.business_qa"
                 }
             }
         }
