@@ -1,116 +1,72 @@
-# Use your custom Selenium base image
-FROM majdkassemt/selenium-qa:latest
+# Use the official Selenium Chrome image as your base.
+# This image already contains Chrome, ChromeDriver, and necessary dependencies
+# for headless execution, including Xvfb.
+FROM selenium/standalone-chrome:latest
 
-# Switch to the root user temporarily to install dependencies and ChromeDriver
+# Switch to the root user temporarily for system package installations
+# The official images run as 'seluser' by default, but apt-get needs root.
 USER root
 
-# Set a working directory inside the container for our operations
-WORKDIR /tmp
+# Set a working directory for your application files.
+# It's good practice to place your application code in a directory other than /tmp
+# to avoid conflicts and for better organization.
+WORKDIR /app
 
-# Install general dependencies needed for curl, unzip, wget, gnupg, ca-certificates, AND jq
+# Install any additional system dependencies your tests might need.
+# The official Selenium images are quite comprehensive, but if you have
+# unique requirements (e.g., specific image manipulation libraries, database clients),
+# you'd add them here.
+# Removed many common libraries already present in the selenium image.
+# Only keeping 'jq' if you still need it for other purposes.
 RUN apt-get update && apt-get install -y \
-    curl \
-    unzip \
-    wget \
-    gnupg \
-    ca-certificates \
     jq \
+    # Add other system packages here if your tests explicitly need them, e.g.:
+    # imagemagick \
+    # other-dev-libs \
     && rm -rf /var/lib/apt/lists/*
 
-# --- EXPLICITLY INSTALL CHROMEDRIVER (REVISED LOOKUP) ---
-# This is the most crucial part to bypass Selenium Manager's issues.
-# We'll fetch the LATEST_STABLE_CHROMEDRIVER_VERSION for the detected Chrome MAJOR version.
+# --- REMOVED THE ENTIRE CHROMEDRIVER INSTALLATION BLOCK ---
+# This is no longer needed because selenium/standalone-chrome:latest
+# already provides a working Chrome and ChromeDriver setup.
+# Attempting to re-download and install it can cause conflicts or break the image.
 
-RUN CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1) \
-    && CHROME_MAJOR_VERSION=$(echo "$CHROME_VERSION" | cut -d. -f1) \
-    && echo "Detected Chrome Major version: $CHROME_MAJOR_VERSION" \
-    \
-    # --- DEBUGGING CURL OUTPUT ---
-    && echo "Attempting to curl ChromeDriver info..." \
-    && CHROMEDRIVER_JSON_OUTPUT=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json") \
-    && echo "CURL Exit Code: $?" \
-    && echo "CURL Output Start >>>" \
-    && echo "$CHROMEDRIVER_JSON_OUTPUT" \
-    && echo "<<< CURL Output End" \
-    \
-    # Check if CURL output is empty or not JSON-like
-    && if [ -z "$CHROMEDRIVER_JSON_OUTPUT" ]; then \
-        echo "ERROR: curl returned empty output. Possible network issue or API failure." && exit 1; \
-    fi \
-    && if ! echo "$CHROMEDRIVER_JSON_OUTPUT" | jq -e . > /dev/null; then \
-        echo "ERROR: curl returned non-JSON output. Output was:" && echo "$CHROMEDRIVER_JSON_OUTPUT" && exit 1; \
-    fi \
-    \
-    # Now proceed with jq if checks pass
-    && CHROMEDRIVER_DATA=$(echo "$CHROMEDRIVER_JSON_OUTPUT" | \
-                              jq -r ".versions[] | select(.version | startswith(\"$CHROME_MAJOR_VERSION.\")) | .chromedriver") \
-    && echo "JQ Parsing Result (CHROMEDRIVER_DATA): $CHROMEDRIVER_DATA" \
-    \
-    # Check if jq found any data
-    && if [ -z "$CHROMEDRIVER_DATA" ] || [ "$CHROMEDRIVER_DATA" = "null" ]; then \
-        echo "ERROR: jq could not find ChromeDriver info for Chrome $CHROME_MAJOR_VERSION. API might have changed or version not found." && exit 1; \
-    fi \
-    \
-    && CHROMEDRIVER_VERSION=$(echo "$CHROMEDRIVER_DATA" | jq -r ".version") \
-    && CHROMEDRIVER_URL=$(echo "$CHROMEDRIVER_DATA" | jq -r ".downloads.linux64[0].url") \
-    && echo "Downloading ChromeDriver version: $CHROMEDRIVER_VERSION from URL: $CHROMEDRIVER_URL" \
-    && wget -q "$CHROMEDRIVER_URL" -O chromedriver-linux64.zip \
-    && unzip chromedriver-linux64.zip -d /usr/local/bin/ \
-    && rm chromedriver-linux64.zip \
-    && chmod +x /usr/local/bin/chromedriver \
-    && echo "ChromeDriver installed at /usr/local/bin/chromedriver"
-
-# --- END EXPLICIT CHROMEDRIVER INSTALLATION ---
-
-# Install Python dependencies using pip
+# Copy your Python requirements file and install Python dependencies.
+# Install into the virtual environment used by the base image if desired,
+# or simply let pip install globally within the container's Python setup.
+# The /opt/venv/bin/pip path is common for these images.
 COPY requirements.txt .
 RUN /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
+# Remove requirements.txt after installation to keep the image cleaner (optional)
 RUN rm requirements.txt
 
-# --- IMPORTANT ADDITIONS FOR CHROME HEADLESS RELIABILITY ---
-# These are still relevant as base Selenium images might not have all needed fonts/libraries.
-# You already had many of these, just consolidating.
-RUN apt-get update && apt-get install -y \
-    fonts-liberation \
-    fonts-noto-color-emoji \
-    libappindicator3-1 \
-    libatk-bridge2.0-0 \
-    libatk1.0-0 \
-    libcairo2 \
-    libcups2 \
-    libdbus-glib-1-2 \
-    libfontconfig1 \
-    libgdk-pixbuf2.0-0 \
-    libglib2.0-0 \
-    libgtk-3-0 \
-    libnspr4 \
-    libnss3 \
-    libpango-1.0-0 \
-    libpangocairo-1.0-0 \
-    libu2f-udev \
-    libvulkan1 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxext6 \
-    libxfixes3 \
-    libxrandr2 \
-    libxrender1 \
-    libxtst6 \
-    xdg-utils \
-    xkb-data \
-    xvfb \
-    --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/*
+# Copy your entire test project into the image.
+# This should be done after installing dependencies to leverage Docker's build cache.
+# If your project changes but requirements.txt doesn't, this layer will be rebuilt,
+# but the pip install layer won't.
+COPY . .
 
 # Set up a virtual display for Chrome.
+# These environment variables are usually already set by the Selenium image,
+# but explicitly setting them here doesn't hurt and provides clarity.
 ENV DISPLAY=:99
 ENV XAUTHORITY=/tmp/.Xauthority
 
-# Ensure the seluser's home directory has correct permissions BEFORE switching user.
-RUN mkdir -p /home/seluser && chown -R seluser:seluser /home/seluser && chmod -R 777 /home/seluser
+# The seluser already exists and has appropriate permissions in the base image.
+# No need to create or chown /home/seluser.
 
-# Set the working directory for subsequent commands to the seluser's home directory.
-WORKDIR /home/seluser
-
-# Switch back to the non-root 'seluser' for security
+# Switch back to the non-root 'seluser' for running your tests.
+# This is a security best practice.
 USER seluser
+
+# Set the working directory for subsequent commands (like your tests) to the seluser's home directory.
+# This is where your copied application code will reside if you copy it to /home/seluser instead of /app
+# If you copy to /app, then your WORKDIR should be /app for the 'seluser'.
+# Based on the WORKDIR /app above, we should keep it consistent.
+WORKDIR /app
+
+# Optional: Define the default command to run when the container starts.
+# This makes it easier to run your tests by just `docker run your-image-name`.
+# Example: If your tests are run with `pytest` from the `/app` directory:
+# CMD ["pytest"]
+# Or if you have a specific script:
+# CMD ["python", "run_tests.py"]
