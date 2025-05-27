@@ -2,7 +2,7 @@
 pipeline {
     agent any // Or a specific agent label
 
-    // Parameters expected from the SUT pipeline trigger
+    // Parameters expected from the SUT pipeline trigger g
     parameters {
         string(name: 'SUT_DEV_URL', defaultValue: 'http://localhost:8080/', description: 'URL of the deployed DEV SUT service')
         string(name: 'SUT_BUILD_NUMBER', defaultValue: 'N/A', description: 'Build number of the SUT that triggered this run')
