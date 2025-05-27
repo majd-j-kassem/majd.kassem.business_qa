@@ -68,3 +68,6 @@ cover/
 *.sqlite3
 *.csv # Be careful with this one if CSVs are part of your data
 *.dat
+
+*.log
+allure-results/
