@@ -51,15 +51,13 @@ pipeline {
             }
         }
 
-        stage('Run Tests - Render Dev (CI Phase)') {
+         stage('Run Tests - Render Dev (CI Phase)') {
             agent {
                 docker {
-                    image "majd-selenium-runner:${env.BUILD_NUMBER}" // Use the dynamically built image tag
-                    // If you need to mount volumes for reports or other data:
-                    // args "-v \${WORKSPACE}/test-results:/var/lib/jenkins/workspace/QA-Selenium-Pipeline@3/test-results -v \${WORKSPACE}/allure-results:/var/lib/jenkins/workspace/QA-Selenium-Pipeline@3/allure-results"
-                    // Or map the whole workspace if it's simpler:
-                    // args "-v ${WORKSPACE}:/app" // And then run tests from /app inside container
-                    // But the current `-w` should handle it.
+                    image "majd-selenium-runner:${env.BUILD_NUMBER}"
+                    // It's good that you mentioned args. We don't need them for this specific error,
+                    // as the default workspace mapping handles it.
+                    // The `-w` argument handles the working directory inside the container.
                 }
             }
             steps {
@@ -73,12 +71,17 @@ pipeline {
                     sh "ls -la"
 
                     echo "Attempting to run pytest..."
-                    withEnv(["BASE_URL=${params.SUT_DEV_URL}"]) { // Pass SUT_DEV_URL as an environment variable
-                        sh "/opt/venv/bin/pytest src --alluredir=allure-results --clean-alluredir"
-                        // Removed 'cd majd.kassem.business_qa'
-                        // Added 'src' assuming your tests are in the 'src' folder as seen in ls -la output.
-                    }
-                    echo "Pytest command finished." // This will be reached if pytest itself runs
+                    // Here's the key modification: Pass browser and base_url to pytest
+                    // Note: We use the SUT_DEV_URL parameter directly.
+                    // And we hardcode 'chrome-headless' for CI.
+                    sh """
+                        /opt/venv/bin/pytest src/tests \\
+                            --alluredir=allure-results \\
+                            --clean-alluredir \\
+                            --browser=chrome-headless \\
+                            --base-url=${params.SUT_DEV_URL}
+                    """
+                    echo "Pytest command finished."
                     echo "--- Inside Docker Container (After Pytest) ---"
                     sh "ls -la test-results"
                     sh "ls -la allure-results"
@@ -86,9 +89,12 @@ pipeline {
             }
             post {
                 always {
-                    // Check if test results exist before publishing
                     script {
-                        if (fileExists('test-results/junit-report.xml')) { // Adjust if your report name is different
+                        // Assuming your pytest generates a JUnit XML report. If not, you might need to configure pytest to do so.
+                        // For example: pytest --junitxml=test-results/junit-report.xml src/tests ...
+                        // Your initial log shows 'collected 2 items', which means pytest ran.
+                        // You might need to adjust your pytest command to ensure it generates this report.
+                        if (fileExists('test-results/junit-report.xml')) {
                             junit 'test-results/junit-report.xml'
                             echo "JUnit report published."
                         } else {
@@ -96,17 +102,15 @@ pipeline {
                         }
 
                         if (fileExists('allure-results')) {
-                            // Requires Allure plugin configured in Jenkins
-                            // Replace 'allure' with the actual function call if your plugin uses a different one
-                            // Example: allure([includeProperties: false, results: [[path: 'allure-results']]])
-                            echo "Allure results found. Allure report will be published if plugin is configured."
+                            allure([includeProperties: false, results: [[path: 'allure-results']]]) // Correct Allure call
+                            echo "Allure results found. Allure report published."
                         } else {
                             echo "WARNING: Allure results directory not found at allure-results. Skipping Allure Report publishing."
                         }
                     }
                 }
                 failure {
-                    error "Pytest tests failed (exit code: ${currentBuild.result == 'FAILURE' ? '1' : 'other'}). Check logs above for details."
+                    error "Pytest tests failed (exit code: ${currentBuild.result}). Check logs above for details."
                     echo "Tests against Render Dev FAILED! Build will stop here. ❌"
                 }
                 success {
