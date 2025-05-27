@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
     ca-certificates \
-    jq \  # <--- ADDED JQ HERE
+    jq \
     # Clean up apt caches to keep image size down
     && rm -rf /var/lib/apt/lists/*
 
