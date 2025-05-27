@@ -23,6 +23,8 @@ def oneTimeSetUp(request, browser, base_url_from_cli):
         driver_options.add_argument('--no-sandbox')
         driver_options.add_argument('--disable-dev-shm-usage')
         driver_options.add_argument('--window-size=1920,1080') # Standard size for visible
+        temp_user_data_dir = os.path.join('/tmp', f'chrome_user_data_{os.getpid()}')
+        driver_options.add_argument(f"--user-data-dir={temp_user_data_dir}")
         print("Configuring Chrome for visible mode (local).")
 
     elif browser == "chrome-headless":
