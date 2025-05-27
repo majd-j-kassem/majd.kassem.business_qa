@@ -7,13 +7,14 @@ USER root
 # Set a working directory inside the container for our operations
 WORKDIR /tmp
 
-# Install general dependencies needed for curl and unzip if not already in base image
+# Install general dependencies needed for curl, unzip, wget, gnupg, ca-certificates, AND jq
 RUN apt-get update && apt-get install -y \
     curl \
     unzip \
     wget \
     gnupg \
     ca-certificates \
+    jq \  # <--- ADDED JQ HERE
     # Clean up apt caches to keep image size down
     && rm -rf /var/lib/apt/lists/*
 
@@ -26,18 +27,14 @@ RUN CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\
     && echo "Detected Chrome Major version: $CHROME_MAJOR_VERSION" \
     && CHROMEDRIVER_INFO_URL=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-int.json" | \
                               jq -r ".versions[] | select(.version | startswith(\"$CHROME_MAJOR_VERSION.\")) | .chromedriver") \
-    && CHROMEDRIVER_VERSION=$(echo $CHROMEDRIVER_INFO_URL | jq -r ".version") \
-    && CHROMEDRIVER_URL=$(echo $CHROMEDRIVER_INFO_URL | jq -r ".downloads.linux64[0].url") \
+    && CHROMEDRIVER_VERSION=$(echo "$CHROMEDRIVER_INFO_URL" | jq -r ".version") \
+    && CHROMEDRIVER_URL=$(echo "$CHROMEDRIVER_INFO_URL" | jq -r ".downloads.linux64[0].url") \
     && echo "Downloading ChromeDriver version: $CHROMEDRIVER_VERSION from URL: $CHROMEDRIVER_URL" \
     && wget -q "$CHROMEDRIVER_URL" -O chromedriver-linux64.zip \
     && unzip chromedriver-linux64.zip -d /usr/local/bin/ \
     && rm chromedriver-linux64.zip \
     && chmod +x /usr/local/bin/chromedriver \
     && echo "ChromeDriver installed at /usr/local/bin/chromedriver"
-
-# If the above fails because jq isn't found, you might need to install jq:
-# RUN apt-get update && apt-get install -y jq && rm -rf /var/lib/apt/lists/*
-# Then retry the RUN command.
 
 # --- END EXPLICIT CHROMEDRIVER INSTALLATION ---
 
