@@ -27,7 +27,7 @@ RUN CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\
     \
     # --- DEBUGGING CURL OUTPUT ---
     && echo "Attempting to curl ChromeDriver info..." \
-    && CHROMEDRIVER_JSON_OUTPUT=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-int.json") \
+    && CHROMEDRIVER_JSON_OUTPUT=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json") \
     && echo "CURL Exit Code: $?" \
     && echo "CURL Output Start >>>" \
     && echo "$CHROMEDRIVER_JSON_OUTPUT" \
