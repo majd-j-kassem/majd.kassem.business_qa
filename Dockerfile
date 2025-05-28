@@ -42,6 +42,19 @@ RUN /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 # Remove requirements.txt after installation to keep the image cleaner (optional)
 RUN rm requirements.txt
 
+# --- NEW: Add Allure Commandline to the Docker image ---
+ARG ALLURE_VERSION="2.25.0" # Use a stable version, e.g., 2.25.0 or 2.34.0 as seen in your logs
+ENV ALLURE_HOME="/opt/allure-commandline"
+
+RUN curl -o /tmp/allure-commandline.zip -L "https://repo.maven.apache.org/maven2/io/qameta/allure/allure-commandline/${ALLURE_VERSION}/allure-commandline-${ALLURE_VERSION}.zip" \
+    && unzip /tmp/allure-commandline.zip -d /opt \
+    && mv /opt/allure-commandline-${ALLURE_VERSION} ${ALLURE_HOME} \
+    && rm /tmp/allure-commandline.zip \
+    && chmod +x ${ALLURE_HOME}/bin/allure
+
+ENV PATH="${ALLURE_HOME}/bin:${PATH}"
+# --- END NEW ---
+
 # Copy your entire test project into the image.
 # This should be done after installing dependencies to leverage Docker's build cache.
 # If your project changes but requirements.txt doesn't, this layer will be rebuilt,
