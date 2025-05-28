@@ -94,22 +94,19 @@ pipeline {
                     sh "ls -la"
 
                     echo "Attempting to run pytest..."
-                    // **CRITICAL FIX: Add PYTHONPATH=. to allow Python to find 'src' module**
-                    // Re-added Allure options as they were missing in the last log
-                    sh """
-                        mkdir -p test-results allure-results
-                        chmod -R 777 test-results allure-results
-                        echo "--- Inside Docker Container (Before Pytest) ---"
-                        pwd
-                        ls -la
-                        echo "Attempting to run pytest..."
-                        # Try a simpler pytest command first
-                        PYTHONPATH=. /opt/venv/bin/python -m pytest
-                    """
+                    // This is the CRITICAL change for debugging the ValueError
+                    sh "PYTHONPATH=. /opt/venv/bin/pytest src/tests --alluredir=allure-results -s -v --trace-config"
                     echo "Pytest command finished."
+
                     echo "--- Inside Docker Container (After Pytest) ---"
-                    sh "ls -la test-results" // Verify if junit-report.xml is present
+                    sh "ls -la test-results" // Verify if junit-report.xml is present (optional)
                     sh "ls -la allure-results" // Verify if allure results are present
+
+                    // --- CRITICAL FIX: Allure generate command MUST run inside the Docker container ---
+                    echo "Generating Allure report inside the container..."
+                    sh '/opt/allure-commandline/bin/allure generate allure-results -c -o allure-report'
+                    sh 'ls -la allure-report' // Verify the report HTML files are generated
+                    // --- END C
                 }
             }
             post {
