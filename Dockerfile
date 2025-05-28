@@ -25,6 +25,9 @@ RUN apt-get update && apt-get install -y \
     # other-dev-libs \
     && rm -rf /var/lib/apt/lists/*
 
+RUN mkdir -p /home/seluser/.cache/selenium && \
+    chmod -R 777 /home/seluser/.cache
+
 # --- REMOVED THE ENTIRE CHROMEDRIVER INSTALLATION BLOCK ---
 # This is no longer needed because selenium/standalone-chrome:latest
 # already provides a working Chrome and ChromeDriver setup.

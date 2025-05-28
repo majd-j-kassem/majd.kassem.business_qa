@@ -5,6 +5,8 @@ from selenium.webdriver.chrome.options import Options
 import os
 import shutil
 import time # Import the time module for delays
+import tempfile # <--- Import tempfile
+
 
 @pytest.fixture()
 def setUp():
@@ -28,7 +30,7 @@ def oneTimeSetUp(request, browser, base_url_from_cli):
             driver_options.add_argument('--disable-dev-shm-usage')
             driver_options.add_argument('--window-size=1920,1080')
             # For local non-headless, generating a unique user-data-dir is still good practice
-            temp_user_data_dir = os.path.join('/tmp', f'chrome_user_data_{os.getpid()}_{int(time.time())}')
+            temp_user_data_dir = os.path.join('/dev/shm', f'chrome_{os.getpid()}_{int(time.time())}')
             driver_options.add_argument(f"--user-data-dir={temp_user_data_dir}")
             print("Configuring Chrome for visible mode (local).")
 
@@ -39,11 +41,10 @@ def oneTimeSetUp(request, browser, base_url_from_cli):
             driver_options.add_argument('--no-sandbox')
             driver_options.add_argument('--disable-dev-shm-usage')
             driver_options.add_argument('--window-size=1920,1080')
-            driver_options.add_argument('--disable-gpu') # Often recommended for headless on Linux
-            temp_user_data_dir = os.path.join('/tmp', f'chrome_user_data_{os.getpid()}_{int(time.time())}')
-            driver_options.add_argument(f"--user-data-dir={temp_user_data_dir}")
+            driver_options.add_argument('--disable-gpu')
             print("Configuring Chrome for headless mode.")
             is_headless = True
+            print("Final Chrome Options:", driver_options.arguments)
 
         elif browser == "firefox":
             # Add Firefox specific options here if needed
