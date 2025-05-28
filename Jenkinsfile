@@ -90,11 +90,14 @@ pipeline {
                     // **CRITICAL FIX: Add PYTHONPATH=. to allow Python to find 'src' module**
                     // Re-added Allure options as they were missing in the last log
                     sh """
-                        PYTHONPATH=. /opt/venv/bin/pytest src/tests \\
-                            --alluredir=allure-results --clean-alluredir \\
-                            --browser=chrome-headless \\
-                            --base-url=${params.SUT_DEV_URL} \\
-                            --junitxml=test-results/junit-report.xml
+                        mkdir -p test-results allure-results
+                        chmod -R 777 test-results allure-results
+                        echo "--- Inside Docker Container (Before Pytest) ---"
+                        pwd
+                        ls -la
+                        echo "Attempting to run pytest..."
+                        # Try a simpler pytest command first
+                        PYTHONPATH=. /opt/venv/bin/pytest src/tests
                     """
                     echo "Pytest command finished."
                     echo "--- Inside Docker Container (After Pytest) ---"
