@@ -15,7 +15,7 @@ pipeline {
                         python3 -m pip install -r requirements.txt
 
                         # Run your tests using the virtual environment's python
-                        python3 -m pytest src/tests/ --browser chrome
+                        python3 -m pytest src/tests/ --browser chrome-headless
                     """
                 }
             }
