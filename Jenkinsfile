@@ -67,7 +67,7 @@ pipeline {
                     sh """
                         PYTHONPATH=. /opt/venv/bin/pytest src/tests \\
                         --browser chrome-headless \\
-                        --base-url ${params.SUT_DEV_URL} \\ 
+                        --base-url ${params.SUT_DEV_URL} \\
                         -s -v --trace-config
                     """
                     echo "Pytest command finished."
@@ -113,7 +113,7 @@ pipeline {
             }
         }
         stage('Deploy to Dev Service') {
-            **steps { // <-- ADDED THIS 'steps' BLOCK**
+            steps { // <-- CORRECTED: Removed **
                 script {
                     echo "Triggering deployment of SUT to Render Dev Service: https://majd-kassem-business-dev.onrender.com/"
             // Use the ID you assigned to your credential in Jenkins
@@ -126,7 +126,7 @@ pipeline {
                     echo "Waiting a few seconds for Render to initiate deployment..."
                     sleep 10
                 }
-            **} // <-- CLOSED THE 'steps' BLOCK**
+            } // <-- CORRECTED: Removed **
             post {
                 success {
                     echo "Successfully triggered Render Dev deployment. 🎉"
