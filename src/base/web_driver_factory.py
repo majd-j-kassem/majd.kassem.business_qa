@@ -26,10 +26,10 @@ class WebDriverFactory:
             # Common paths in selenium/standalone-chrome:
             # /usr/bin/chromedriver or /usr/local/bin/chromedriver
             # Let's try /usr/bin/chromedriver first as it's often the default.
-            chrome_service = ChromeService(executable_path='/usr/bin/chromedriver') # CRITICAL CHANGE
+            #chrome_service = ChromeService(executable_path='/usr/bin/chromedriver') # CRITICAL CHANGE
 
             # Pass both the options and the service object
-            driver = webdriver.Chrome(service=chrome_service, options=driver_options) # CRITICAL CHANGE
+            driver = webdriver.Chrome( options=driver_options) # CRITICAL CHANGE
         elif self.browser == "firefox":
             # ... (your existing Firefox logic, potentially adding FirefoxService too)
             # driver = webdriver.Firefox(options=driver_options) # or similar
