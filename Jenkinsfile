@@ -101,11 +101,12 @@ pipeline {
                             echo "WARNING: JUnit report file not found at test-results/junit-report.xml. Skipping JUnit publishing."
                         }
 
-                        if (fileExists('allure-results')) {
-                            allure([includeProperties: false, results: [[path: 'allure-results']]]) // Correct Allure call
-                            echo "Allure results found. Allure report published."
+                        if (fileExists('allure-results/')) {
+                            echo 'Generating Allure report...'
+                            allure([[allureCmdline: 'Allure_CLI_2.25.0', reportBuildPolicy: 'ALWAYS', source: 'allure-results']])
+                            echo 'Allure report generated.'
                         } else {
-                            echo "WARNING: Allure results directory not found at allure-results. Skipping Allure Report publishing."
+                            echo 'Allure results directory not found. Skipping Allure report generation.'
                         }
                     }
                 }
