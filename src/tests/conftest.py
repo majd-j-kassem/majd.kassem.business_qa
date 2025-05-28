@@ -28,7 +28,7 @@ def oneTimeSetUp(request, browser, base_url_from_cli):
             driver_options.add_argument('--disable-dev-shm-usage')
             driver_options.add_argument('--window-size=1920,1080')
             # For local non-headless, generating a unique user-data-dir is still good practice
-            temp_user_data_dir = os.path.join('/tmp', f'chrome_user_data_{os.getpid()}')
+            temp_user_data_dir = os.path.join('/tmp', f'chrome_user_data_{os.getpid()}_{int(time.time())}')
             driver_options.add_argument(f"--user-data-dir={temp_user_data_dir}")
             print("Configuring Chrome for visible mode (local).")
 
@@ -40,7 +40,7 @@ def oneTimeSetUp(request, browser, base_url_from_cli):
             driver_options.add_argument('--disable-dev-shm-usage')
             driver_options.add_argument('--window-size=1920,1080')
             driver_options.add_argument('--disable-gpu') # Often recommended for headless on Linux
-            temp_user_data_dir = os.path.join('/tmp', f'chrome_user_data_{os.getpid()}')
+            temp_user_data_dir = os.path.join('/tmp', f'chrome_user_data_{os.getpid()}_{int(time.time())}')
             driver_options.add_argument(f"--user-data-dir={temp_user_data_dir}")
             print("Configuring Chrome for headless mode.")
             is_headless = True
