@@ -66,8 +66,8 @@ pipeline {
                     // Allure-related flags (--alluredir) are removed
                     sh """
                         PYTHONPATH=. /opt/venv/bin/pytest src/tests \\
-                        --browser chrome-headless \\ // <-- Passing 'chrome-headless' to --browser
-                        --base-url ${params.SUT_DEV_URL} \\ // <-- Passing Jenkins parameter to --base-url
+                        --browser chrome-headless \\
+                        --base-url ${params.SUT_DEV_URL} \\ 
                         -s -v --trace-config
                     """
                     echo "Pytest command finished."
