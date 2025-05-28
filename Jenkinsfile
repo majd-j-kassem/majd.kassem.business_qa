@@ -64,7 +64,14 @@ pipeline {
                 }
             }
         }
-
+        stage('Cleanup Pytest Cache') {
+        steps {
+            script {
+                sh 'rm -rf .pytest_cache'
+                sh 'find . -name "__pycache__" -exec rm -rf {} +'
+                }
+            }
+        }
          stage('Run Tests - Render Dev (CI Phase)') {
             agent {
                 docker {
