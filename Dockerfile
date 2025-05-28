@@ -6,15 +6,13 @@ FROM selenium/standalone-chrome:latest
 # Set working directory inside the container
 WORKDIR /app
 
+# --- FIX START: Switch to root for apt operations and back to seluser ---
+
+# Temporarily switch to root user to perform apt-get operations
+USER root
+
 # Install system dependencies (jq, curl, unzip) using apt-get.
-# This section has been specifically adjusted to address the 'Permission denied' error
-# with apt-get by:
-# 1. Forcefully removing existing apt lists to clear any corruption.
-# 2. Creating and setting permissive permissions on the 'partial' directory which was reported as missing/problematic.
-# 3. Using DEBIAN_FRONTEND=noninteractive to prevent interactive prompts during apt operations.
-# 4. Using --no-install-recommends to keep the image lean.
-# 5. Using --allow-unauthenticated (use with caution in production) to bypass potential
-#    authentication issues during package fetching.
+# This section ensures that apt-get operations run with necessary permissions.
 RUN rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/lib/apt/lists/partial && \
     chmod 777 /var/lib/apt/lists/partial && \
@@ -26,34 +24,38 @@ RUN rm -rf /var/lib/apt/lists/* && \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
+# Switch back to the default 'seluser' for subsequent operations
+# This is crucial for security and compatibility with Selenium.
+USER seluser
+
+# --- FIX END ---
+
 # Create Selenium cache directory and set permissive permissions for the 'seluser'
-# which is the default user in selenium/standalone-chrome images.
+# (This RUN command will now execute as 'seluser')
 RUN mkdir -p /home/seluser/.cache/selenium && \
     chmod -R 777 /home/seluser/.cache
 
 # Copy Python requirements file and install them using pip.
-# The virtual environment is located at /opt/venv in the base image.
+# (This RUN command will also execute as 'seluser')
 COPY requirements.txt .
 RUN /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 # Remove requirements.txt after installation to reduce final image size
 RUN rm requirements.txt
 
 # Allure Commandline installation:
-# 1. Define the Allure version as an ARG to make it easily configurable.
-# 2. Define ALLURE_HOME as an ENV variable for easy reference.
-# 3. Download the Allure Commandline zip.
-# 4. Unzip it to /opt.
-# 5. Move the unzipped directory (which is allure-<version>) to the ALLURE_HOME path.
-# 6. Remove the downloaded zip file.
-# 7. Make the Allure executable.
-ARG ALLURE_VERSION="2.25.0" # This is the version that was successful in your previous logs.
+# This requires root privileges for installing into /opt.
+# So, we need to temporarily switch to root again.
+ARG ALLURE_VERSION="2.25.0"
 ENV ALLURE_HOME="/opt/allure-commandline"
 
+USER root
 RUN curl -o /tmp/allure-commandline.zip -L "https://repo.maven.apache.org/maven2/io/qameta/allure/allure-commandline/${ALLURE_VERSION}/allure-commandline-${ALLURE_VERSION}.zip" \
     && unzip /tmp/allure-commandline.zip -d /opt \
     && mv /opt/allure-${ALLURE_VERSION} ${ALLURE_HOME} \
     && rm /tmp/allure-commandline.zip \
     && chmod +x ${ALLURE_HOME}/bin/allure
+USER seluser
+
 
 # Add Allure's bin directory to the PATH so 'allure' command can be found
 ENV PATH="${ALLURE_HOME}/bin:${PATH}"
