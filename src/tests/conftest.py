@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 
 def pytest_addoption(parser):
     parser.addoption("--browser", action="store", default="chrome", help="Type of browser: chrome or firefox")
-    parser.addoption("--base-url", action="store", default="https://majd-kassem-business-dev.onrender.com/", help="Base URL for testing")
+    parser.addoption("--baseurl", action="store", default="https://majd-kassem-business-dev.onrender.com/", help="Base URL for testing")
 
 @pytest.fixture(scope="class")
 def oneTimeSetUp(request, browser, base_url_from_cli):
@@ -91,5 +91,5 @@ def browser(request):
 @pytest.fixture(scope="session")
 def base_url_from_cli(request):
     """Fixture to get the --base-url option value."""
-    return request.config.getoption("--base-url")
+    return request.config.getoption("--baseurl")
 # --- END NEW FIXTURES ---
