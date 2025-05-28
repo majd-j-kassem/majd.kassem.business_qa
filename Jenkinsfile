@@ -104,7 +104,7 @@ pipeline {
                         ls -la
                         echo "Attempting to run pytest..."
                         # Try a simpler pytest command first
-                        PYTHONPATH=. /opt/venv/bin/pytest src/tests
+                        PYTHONPATH=. /opt/venv/bin/python -m pytest
                     """
                     echo "Pytest command finished."
                     echo "--- Inside Docker Container (After Pytest) ---"
