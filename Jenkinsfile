@@ -95,7 +95,13 @@ pipeline {
 
                     echo "Attempting to run pytest..."
                     // This is the CRITICAL change for debugging the ValueError
-                    sh "PYTHONPATH=. /opt/venv/bin/pytest src/tests --browser chrome-headless --base-url ${SUT_DEV_URL}
+                    sh """
+                        PYTHONPATH=. /opt/venv/bin/pytest src/tests \\
+                        --alluredir=allure-results \\
+                        --browser chrome-headless \\
+                        --base-url ${params.SUT_DEV_URL} \\
+                        -s -v --trace-config
+                    """
                     echo "Pytest command finished."
 
                     echo "--- Inside Docker Container (After Pytest) ---"
