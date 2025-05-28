@@ -147,9 +147,8 @@ pipeline {
         always {
             echo "Pipeline finished for job QA-Selenium-Pipeline, build number ${env.BUILD_NUMBER}."
             allure([
-            results: 'allure-results', // Example, if this path is somehow not valid or null
-            properties: [] // Or if there's an issue with properties
-        ])
+                results: ['allure-results'], 
+])
         }
         success {
             echo "Overall pipeline SUCCESS! ✅"
