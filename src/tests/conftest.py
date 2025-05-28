@@ -76,9 +76,9 @@ def oneTimeSetUp(request, browser, base_url_from_cli):
         if 'driver' in locals() and driver is not None:
             print("Quitting WebDriver...")
             driver.quit()
-            time.sleep(1) # Crucial: Give the OS/ChromeDriver time to release resources
+            time.sleep(1) # <--- THIS LINE IS CRITICAL - ENSURE IT'S THERE!
 
-        # Clean up the temporary user data directory if it was created
+        # Clean up the temporary user data directory here
         if temp_user_data_dir and os.path.exists(temp_user_data_dir):
             print(f"Attempting to clean up temporary user data directory: {temp_user_data_dir}")
             try:
