@@ -1,0 +1,73 @@
+// Jenkinsfile.qa_tests (in majd.kassem.business_qa.git)
+pipeline {
+    // Agent: Assuming your Jenkins agent environment already has
+    // Python, pip, pytest, Selenium, Chrome, and Chromedriver configured correctly.
+    // If not, you'd need to go back to the Docker setup or pre-install dependencies.
+    agent any // Use 'any' as it seems your existing setup on the agent works.
+
+    parameters {
+        string(name: 'STAGING_URL_PARAM', defaultValue: 'https://majd-kassem-business-dev.onrender.com/', description: 'URL of the SUT staging environment')
+    }
+
+    environment {
+        QA_REPO = 'https://github.com/majd-j-kassem/majd.kassem.business_qa.git'
+        QA_BRANCH = 'dev' // Or 'main' if your test code is kept on main
+        LIVE_DEPLOY_JOB_NAME = 'SUT-Deploy-Live' // EXACT name of the Jenkins job for live deployment
+        GIT_CREDENTIAL_ID = 'git_id' // <--- Use the ID you created in Step 1
+    }
+
+    stages {
+        stage('Checkout QA Tests') {
+            steps {
+                script {
+                    echo "Checking out QA repository: ${env.QA_REPO}, branch: ${env.QA_BRANCH}"
+                    // 'checkout scm' works here because this Jenkins job's SCM config
+                    // will point to the QA repository itself.
+                    checkout scm
+                }
+            }
+        }
+
+        // REMOVED: 'Install QA Dependencies' stage as per your feedback that it's not needed.
+
+        stage('Run QA Tests against Staging') {
+            steps {
+                script {
+                    echo "Running Selenium tests against Staging URL: ${params.STAGING_URL_PARAM}"
+                    // Assuming your tests are located in a 'src/tests' directory relative to the QA repo root.
+                    // Ensure 'pytest' is in the PATH of your Jenkins agent.
+                    sh "pytest src/tests --browser chrome-headless --base-url ${params.STAGING_URL_PARAM}"
+                }
+            }
+        }
+
+        stage('Trigger SUT Live Deployment (if tests pass)') {
+            when {
+                // Only proceed if the current QA test build is SUCCESSFUL.
+                expression { currentBuild.result == 'SUCCESS' }
+            }
+            steps {
+                script {
+                    echo "QA tests passed. Triggering live deployment job: ${env.LIVE_DEPLOY_JOB_NAME}"
+                    build job: env.LIVE_DEPLOY_JOB_NAME, wait: true
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // If your tests create temporary files (e.g., screenshots), you might want to clean them up here.
+            deleteDir() // Clean up the agent's workspace
+        }
+        success {
+            echo 'QA Tests pipeline finished successfully.'
+        }
+        failure {
+            echo 'QA Tests pipeline FAILED. No deployment to live.'
+        }
+        unstable {
+            echo 'QA Tests pipeline finished with unstable results (e.g., some tests failed).'
+        }
+    }
+}
