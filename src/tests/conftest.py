@@ -1,24 +1,36 @@
 import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service as ChromeService # Import Service here too if you need it for local runs
+from selenium.webdriver.chrome.service import Service as ChromeService
 import os
 import shutil
-import tempfile # Make sure tempfile is imported
-import logging # Optional, for better logging
-from src.base.web_driver_factory import WebDriverFactory # Your factory
+import tempfile
+import logging
+from src.base.web_driver_factory import WebDriverFactory
 
-# Configure logging (optional, but good for debugging)
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
 
 def pytest_addoption(parser):
     parser.addoption("--browser", action="store", default="chrome", help="Type of browser: chrome or firefox")
-    parser.addoption("--baseurl", action="store", default="https://www.letskodeit.com", help="Base URL for testing")
+    parser.addoption("--base-url", action="store", default="https://www.letskodeit.com", help="Base URL for testing")
+
+# --- NEW FIXTURES START HERE ---
+@pytest.fixture(scope="session") # 'session' scope as these are command-line options
+def browser(request):
+    """Fixture to get the --browser option value."""
+    return request.config.getoption("--browser")
+
+@pytest.fixture(scope="session") # 'session' scope as these are command-line options
+def base_url_from_cli(request):
+    """Fixture to get the --base-url option value."""
+    return request.config.getoption("--base-url")
+# --- NEW FIXTURES END HERE ---
+
 
 @pytest.fixture(scope="class")
-def oneTimeSetUp(request, browser, base_url_from_cli):
+def oneTimeSetUp(request, browser, base_url_from_cli): # 'browser' and 'base_url_from_cli' are now fixtures
     log.info(f"Running one time setUp for browser: {browser}")
     driver_options = None
     temp_user_data_dir = None
@@ -31,7 +43,6 @@ def oneTimeSetUp(request, browser, base_url_from_cli):
             driver_options.add_argument('--disable-dev-shm-usage')
             driver_options.add_argument('--window-size=1920,1080')
 
-            # Ensure a unique temporary user data directory is created
             temp_user_data_dir = tempfile.mkdtemp(prefix='chrome_user_data_')
             driver_options.add_argument(f"--user-data-dir={temp_user_data_dir}")
             log.info(f"Using temporary user data directory: {temp_user_data_dir}")
@@ -50,11 +61,10 @@ def oneTimeSetUp(request, browser, base_url_from_cli):
             pass
 
         wdf = WebDriverFactory(browser)
-        # Pass driver_options to the factory method
-        driver = wdf.getWebDriverInstance(driver_options=driver_options) # This line remains the same
+        driver = wdf.getWebDriverInstance(driver_options=driver_options)
 
-        driver.implicitly_wait(10) # Good practice for initial element loading
-        driver.get(base_url_from_cli)
+        driver.implicitly_wait(10)
+        driver.get(base_url_from_cli) # Using the fixture now
 
         if request.cls:
             request.cls.driver = driver
@@ -64,11 +74,10 @@ def oneTimeSetUp(request, browser, base_url_from_cli):
 
     finally:
         log.info("Running one time tearDown (from finally block).")
-        if 'driver' in locals() and driver: # Check if driver was successfully initialized
+        if 'driver' in locals() and driver:
             driver.quit()
             log.info("WebDriver quit.")
 
-        # Clean up the temporary user data directory
         if temp_user_data_dir and os.path.exists(temp_user_data_dir):
             try:
                 shutil.rmtree(temp_user_data_dir)
