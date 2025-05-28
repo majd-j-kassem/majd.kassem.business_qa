@@ -63,9 +63,6 @@ pipeline {
             steps {
                 script {
                     echo "Running tests against Render Dev: ${params.SUT_DEV_URL} inside custom Docker image."
-                    sh "mkdir -p test-results allure-results"
-                    sh "chmod -R 777 test-results allure-results"
-
                     echo "--- Inside Docker Container (Before Pytest) ---"
                     sh "pwd"
                     sh "ls -la"
@@ -82,7 +79,6 @@ pipeline {
                     echo "Pytest command finished."
                     echo "--- Inside Docker Container (After Pytest) ---"
                     sh "ls -la test-results"
-                    sh "ls -la allure-results"
                 }
             }
             post {
@@ -138,9 +134,6 @@ pipeline {
     post {
         always {
             echo "Pipeline finished for job QA-Selenium-Pipeline, build number ${env.BUILD_NUMBER}."
-            allure([
-                results: ['allure-results'], 
-])
         }
         success {
             echo "Overall pipeline SUCCESS! ✅"
