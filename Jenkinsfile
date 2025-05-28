@@ -15,14 +15,20 @@ pipeline {
             }
         }
         stage('Build Test Image') {
-            steps { docker.build(TEST_IMAGE, ".") } // Dockerfile for test runner in QA repo root
+            steps {
+                script{
+                 docker.build(TEST_IMAGE, ".") 
+                }
+                 } // Dockerfile for test runner in QA repo root
         }
         stage('Run Tests') {
             steps {
                 sh 'mkdir -p test-results allure-results && chmod -R 777 test-results allure-results'
+                script{
                 docker.image(TEST_IMAGE).inside {
                     def pytestExitCode = sh(script: "pytest src/tests --browser chrome-headless --base-url ${BASE_URL} --junitxml=${WORKSPACE}/test-results/junit-report.xml --alluredir=${WORKSPACE}/allure-results", returnStatus: true)
                     if (pytestExitCode != 0) { error "Tests failed!" }
+                }
                 }
             }
             post {
