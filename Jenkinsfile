@@ -1,6 +1,9 @@
 // Jenkinsfile in majd.kassem.business_qa.git
 pipeline {
-    agent { docker { image 'python:3.13-slim-bookworm' } }
+    agent { docker {
+         image 'python:3.13-slim-bookworm'
+         args '-u root' // Sometimes needed for permissions within the container
+        } }
     parameters {
         string(name: 'SUT_BASE_URL', defaultValue: 'https://majd-kassem-business-dev.onrender.com/', description: 'SUT URL for tests.')
     }
