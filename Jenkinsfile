@@ -112,7 +112,25 @@ pipeline {
                 }
             }
         }
-
+        stage('Deploy to Dev Service') {
+    script {
+        echo "Triggering deployment of SUT to Render Dev Service: https://majd-kassem-business-dev.onrender.com/"
+        // Use the ID you assigned to your credential in Jenkins
+        withCredentials([string(credentialsId: 'RENDER_API_KEY', variable: 'RENDER_API_KEY_VAR')]) {
+            sh """
+                curl -X POST -H "Authorization: Bearer ${RENDER_API_KEY_VAR}" https://api.render.com/v1/services/srv-d0pau63e5dus73dkco6g/deploys
+            """
+        }
+        echo "Deployment trigger sent to Render Dev! Check Render dashboard for status."
+        echo "Waiting a few seconds for Render to initiate deployment..."
+        sleep 10
+    }
+    post {
+        success {
+            echo "Successfully triggered Render Dev deployment. 🎉"
+        }
+    }
+}
         stage('Deploy to Render Live (CD Phase)') {
             steps {
                 echo "Triggering deployment to Render Live Service..."
