@@ -76,8 +76,6 @@ pipeline {
                     // And we hardcode 'chrome-headless' for CI.
                     sh """
                         /opt/venv/bin/pytest src/tests \\
-                            --alluredir=allure-results \\
-                            --clean-alluredir \\
                             --browser=chrome-headless \\
                             --base-url=${params.SUT_DEV_URL}
                     """
