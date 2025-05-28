@@ -19,7 +19,7 @@ def pytest_addoption(parser):
 
 @pytest.fixture(scope="class")
 def oneTimeSetUp(request, browser, base_url_from_cli):
-    log.info(f"Running one time setUp for browser: {browser}")
+    log.info(f"Running one time setUp for browser: str(browser)")
     driver_options = None
     temp_user_data_dir = None
 
