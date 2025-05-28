@@ -15,11 +15,11 @@ log = logging.getLogger(__name__)
 
 def pytest_addoption(parser):
     parser.addoption("--browser", action="store", default="chrome", help="Type of browser: chrome or firefox")
-    parser.addoption("--baseurl", action="store", default="https://www.letskodeit.com", help="Base URL for testing")
+    parser.addoption("--base-url", action="store", default="https://www.letskodeit.com", help="Base URL for testing")
 
 @pytest.fixture(scope="class")
 def oneTimeSetUp(request, browser, base_url_from_cli):
-    log.info(f"Running one time setUp for browser: str(browser)")
+    log.info(f"Running one time setUp for browser: {browser}")
     driver_options = None
     temp_user_data_dir = None
 
@@ -81,3 +81,15 @@ def setUp():
     log.info("Running method level setUp")
     yield
     log.info("Running method level tearDown")
+    
+# --- ADD THESE TWO NEW FIXTURES ---
+@pytest.fixture(scope="session")
+def browser(request):
+    """Fixture to get the --browser option value."""
+    return request.config.getoption("--browser")
+
+@pytest.fixture(scope="session")
+def base_url_from_cli(request):
+    """Fixture to get the --base-url option value."""
+    return request.config.getoption("--base-url")
+# --- END NEW FIXTURES ---
