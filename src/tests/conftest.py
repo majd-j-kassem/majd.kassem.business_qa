@@ -18,7 +18,7 @@ def oneTimeSetUp(request, browser, base_url_from_cli):
     print(f"Running one time setUp for browser: {browser}")
     driver_options = None # Initialize to None
     is_headless = False # Flag to track if we're in headless mode
-    #temp_user_data_dir = None # <--- Initialize outside the try block
+    temp_user_data_dir = None # <--- Initialize outside the try block
     try:
 
         if browser == "chrome":
@@ -27,8 +27,8 @@ def oneTimeSetUp(request, browser, base_url_from_cli):
             driver_options.add_argument('--no-sandbox')
             driver_options.add_argument('--disable-dev-shm-usage')
             driver_options.add_argument('--window-size=1920,1080') # Standard size for visible
-            #temp_user_data_dir = os.path.join('/tmp', f'chrome_user_data_{os.getpid()}')
-            #driver_options.add_argument(f"--user-data-dir={temp_user_data_dir}")
+            temp_user_data_dir = os.path.join('/tmp', f'chrome_user_data_{os.getpid()}')
+            driver_options.add_argument(f"--user-data-dir={temp_user_data_dir}")
             print("Configuring Chrome for visible mode (local).")
 
         elif browser == "chrome-headless":
@@ -38,14 +38,10 @@ def oneTimeSetUp(request, browser, base_url_from_cli):
             driver_options.add_argument('--no-sandbox')
             driver_options.add_argument('--disable-dev-shm-usage')
             driver_options.add_argument('--window-size=1920,1080') # Larger size for headless
-            # --- ADD THESE TWO LINES ---
-            # Forces Chrome to use a unique, temporary user data directory for each run.
-            # os.getpid() makes it unique per process, good for parallel execution (though not happening here).
-            #temp_user_data_dir = os.path.join('/tmp', f'chrome_user_data_{os.getpid()}')
-            #driver_options.add_argument(f"--user-data-dir={temp_user_data_dir}")
-            # Add remote debugging port - useful for debugging headless Chrome if needed
-            #driver_options.add_argument("--remote-debugging-port=9222")
-            # --- END ADDITIONS ---
+            # --- UNCOMMENT THESE TWO LINES ---
+            temp_user_data_dir = os.path.join('/tmp', f'chrome_user_data_{os.getpid()}')
+            driver_options.add_argument(f"--user-data-dir={temp_user_data_dir}")
+            # --- END UNCOMMENT ---
             print("Configuring Chrome for headless mode.")
             is_headless = True
 
@@ -75,6 +71,10 @@ def oneTimeSetUp(request, browser, base_url_from_cli):
         if 'driver' in locals() and driver is not None: # Check if driver variable exists and is not None
              driver.quit()
          # Crucially, clean up the temporary user data directory here
+        # Clean up the temporary user data directory if it was created
+        if temp_user_data_dir and os.path.exists(temp_user_data_dir):
+            print(f"Cleaning up temporary user data directory: {temp_user_data_dir}")
+            shutil.rmtree(temp_user_data_dir)
         
 
     
