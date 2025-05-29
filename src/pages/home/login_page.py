@@ -9,7 +9,9 @@ class LoginPage(SeleniumDriver):
         self.driver = driver 
 
     log = cl.customLogger(logging.DEBUG)
-    #Locator
+    ################
+    ### Locators ###
+    ################
     login_locator = "Login"
     email_loctor = "id_username"
     password_locator = "id_password"
@@ -17,6 +19,9 @@ class LoginPage(SeleniumDriver):
     logout_locator = "Logout"
     error_message_login_locator = "//li[@class='error approval-message']"
 
+    ############################
+    ### Element Interactions ###
+    ############################
     
     def click_login_link(self):
         self.click_element(self.login_locator, locatorType="linktext")
