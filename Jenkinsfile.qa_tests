@@ -1,8 +1,5 @@
 // Jenkinsfile.qa_tests (in majd.kassem.business_qa.git)
 pipeline {
-    // Agent: Assuming your Jenkins agent environment already has
-    // Python, pip, pytest, Selenium, Chrome, and Chromedriver configured correctly.
-    // If not, you'd need to go back to the Docker setup or pre-install dependencies.
     agent any // Use 'any' as it seems your existing setup on the agent works.
 
     parameters {
@@ -21,22 +18,27 @@ pipeline {
             steps {
                 script {
                     echo "Checking out QA repository: ${env.QA_REPO}, branch: ${env.QA_BRANCH}"
-                    // 'checkout scm' works here because this Jenkins job's SCM config
-                    // will point to the QA repository itself.
                     checkout scm
                 }
             }
         }
 
-        // REMOVED: 'Install QA Dependencies' stage as per your feedback that it's not needed.
-
         stage('Run QA Tests against Staging') {
             steps {
                 script {
                     echo "Running Selenium tests against Staging URL: ${params.STAGING_URL_PARAM}"
-                    // Assuming your tests are located in a 'src/tests' directory relative to the QA repo root.
-                    // Ensure 'pytest' is in the PATH of your Jenkins agent.
-                    sh "pytest src/tests --browser chrome-headless --base-url ${params.STAGING_URL_PARAM}"
+                    // It's good practice to create the allure-results directory explicitly
+                    // even if pytest can often create it.
+                    sh "mkdir -p allure-results"
+                    sh "mkdir -p test-results" // For JUnit XML if you decide to use it separately
+
+                    // This is where you include the --alluredir flag
+                    // Assuming your tests are in 'src/tests' relative to the repo root.
+                    // This command will run your tests and put Allure's raw data in 'allure-results/'.
+                    // The --alluredir option takes precedence over pytest.ini if both are present.
+                    // IMPORTANT: Use -Dmaven.test.failure.ignore=true equivalent if your test runner aborts on first failure.
+                    // For pytest, it usually continues by default, but ensure the exit code doesn't stop the pipeline prematurely.
+                    sh "pytest src/tests --alluredir=allure-results --junitxml=test-results/junit_report.xml --browser chrome-headless --base-url ${params.STAGING_URL_PARAM}"
                 }
             }
         }
@@ -55,16 +57,46 @@ pipeline {
         }
     }
 
+    // --- Report Publishing and Cleanup ---
     post {
         always {
-            // If your tests create temporary files (e.g., screenshots), you might want to clean them up here.
-            deleteDir() // Clean up the agent's workspace
+            script {
+                echo 'Publishing Allure Test Report...'
+                // This step tells Jenkins to find the raw Allure data in 'allure-results'
+                // and build the interactive HTML report.
+                allure([
+                    reportDir: 'allure-results',
+                    // Optional: If you configured a specific Allure CLI installation in Jenkins global tools config
+                    // allureInstall: 'MyAllureCLI_2.x'
+                ])
+
+                echo 'Publishing JUnit XML Reports...'
+                // Publish JUnit XML results for Jenkins' built-in Test Results view and trend graphs.
+                junit 'test-results/junit_report.xml'
+
+                // --- Optional: Update build description/display name for quick overview ---
+                def testResultAction = currentBuild.testResultAction
+                if (testResultAction != null) {
+                    def totalTests = testResultAction.totalCount
+                    def failedTests = testResultAction.failCount
+                    def skippedTests = testResultAction.skipCount
+                    currentBuild.displayName = "#${env.BUILD_NUMBER} (${totalTests} tests, ${failedTests} failed)"
+                    currentBuild.description = "Total: ${totalTests} | Failed: ${failedTests} | Skipped: ${skippedTests}"
+                }
+
+                // Clean up the agent's workspace.
+                // Make sure this is *after* all publishing steps, as they need the files.
+                deleteDir()
+            }
         }
         success {
             echo 'QA Tests pipeline finished successfully.'
         }
         failure {
             echo 'QA Tests pipeline FAILED. No deployment to live.'
+            // You might want to explicitly set the build result to FAILURE if pytest itself didn't
+            // and you want Jenkins to mark it as such even if the post-steps ran.
+            // currentBuild.result = 'FAILURE'
         }
         unstable {
             echo 'QA Tests pipeline finished with unstable results (e.g., some tests failed).'
