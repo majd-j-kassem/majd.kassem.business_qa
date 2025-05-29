@@ -14,8 +14,8 @@ class CoursesPage(SeleniumDriver):
     search_box = ""
     course_name = "//h2[contains(text(),'DevOps: Introduction to Developer Operations Speci')]"
     all_courses = "//div[@class='course-card']"
-    view_course_details_button = "//div[@class='courses-page-container']//div[4]//a[1]"
-    enroll_button = "//button[normalize-space()='Register for Course']"
+    view_course_details_button = "//a[normalize-space()='View Course']"
+    register_button = "//button[normalize-space()='Register for Course']"
     card_number_input = "//input[@id='id_card_number']"
     card_expiry_month_selector = "//select[@id='id_expiry_month']"
     card_expiry_year_selector = "//select[@id='id_expiry_year']"
@@ -31,6 +31,9 @@ class CoursesPage(SeleniumDriver):
 
     def view_course_details(self):
         self.click_element(locator=self.view_course_details_button,locatorType="xpath") 
+        
+    def click_register_course(self):
+        self.click_element(locator=self.register_button,locatorType="xpath") 
 
     ############## Card Info Function#######################################################
     def enter_card_num(self, card_num):
@@ -57,3 +60,15 @@ class CoursesPage(SeleniumDriver):
         self.select_expiry_year(card_exp_year)
 
     def enroll_course(self,card_num="", card_exp_mont="", card_exp_year=""):
+        self.webScroll()
+        self.view_course_details()
+        self.webScroll()
+        self.click_register_course()
+        self.webScroll()
+        self.enter_credit_card_info(card_num, card_exp_mont, card_exp_year)
+        self.click_pay_button()
+        
+    def verifyEnrollFailed(self):
+        messageElement = self.waitForElement(self.enroll_error_message, locatorType="xpath")
+        result = self.isElementDisplayed(element=messageElement)
+        return result

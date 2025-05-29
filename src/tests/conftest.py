@@ -7,7 +7,6 @@ import shutil
 import tempfile # Make sure tempfile is imported
 import logging # Optional, for better logging
 from  base.web_driver_factory import WebDriverFactory # Your factory
-
 # Configure logging (optional, but good for debugging)
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -22,6 +21,7 @@ def oneTimeSetUp(request, browser, base_url_from_cli):
     log.info(f"Running one time setUp for browser: {browser}")
     driver_options = None
     temp_user_data_dir = None
+   
 
     try:
         if browser == "chrome" or browser == "chrome-headless":
@@ -52,7 +52,6 @@ def oneTimeSetUp(request, browser, base_url_from_cli):
         wdf = WebDriverFactory(browser)
         # Pass driver_options to the factory method
         driver = wdf.getWebDriverInstance(driver_options=driver_options) # This line remains the same
-
         driver.implicitly_wait(10) # Good practice for initial element loading
         driver.get(base_url_from_cli)
 

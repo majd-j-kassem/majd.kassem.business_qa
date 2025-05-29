@@ -8,7 +8,7 @@ class LoginPage(SeleniumDriver):
         super().__init__(driver)
         self.driver = driver 
 
-    log = cl.customLogger(logging.DEBUG)
+    log = cl.CustomLogger(logging.DEBUG)
     ################
     ### Locators ###
     ################

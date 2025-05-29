@@ -14,7 +14,7 @@ class SeleniumDriver():
         self.driver = driver
         # Initialize the logger for this class instance
         # Ensure your customLogger returns a logger instance correctly
-        self.log = cl.customLogger(logging.DEBUG)
+        self.log = cl.CustomLogger(logging.DEBUG)
 
     def getByType(self, locatorType):
         """
@@ -185,3 +185,14 @@ class SeleniumDriver():
     # The old 'waitForElement' method has been removed. Its functionality is now covered
     # by the enhanced 'get_element' method and the robust 'isElementVisible'.
     # This removes redundant code and avoids problematic implicit_wait manipulations.
+    def webScroll(self, direction="up"):
+        """
+        NEW METHOD
+        """
+        if direction == "up":
+            # Scroll Up
+            self.driver.execute_script("window.scrollBy(0, -800);")
+
+        if direction == "down":
+            # Scroll Down
+            self.driver.execute_script("window.scrollBy(0, 800);")
