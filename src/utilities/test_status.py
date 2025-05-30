@@ -12,7 +12,7 @@ import logging
 from base.selenium_driver import SeleniumDriver
 from traceback import print_stack
 
-class TestStatus(SeleniumDriver):
+class StatusVerifier(SeleniumDriver):
 
     log = cl.CustomLogger(logging.INFO)
 
@@ -20,7 +20,7 @@ class TestStatus(SeleniumDriver):
         """
         Inits CheckPoint class
         """
-        super(TestStatus, self).__init__(driver)
+        super(StatusVerifier, self).__init__(driver)
         self.resultList = []
 
     def setResult(self, result, resultMessage):

@@ -1,5 +1,5 @@
 from pages.courses.courses_page import CoursesPage
-from utilities.test_status import TestStatus
+from utilities.test_status import StatusVerifier
 import unittest
 import pytest
 from pages.home.login_page import LoginPage
@@ -20,7 +20,7 @@ class RegisterCoursesTests(unittest.TestCase):
         self.home_page.go_to_course_page()
         time.sleep(3)
         self.courses_page = CoursesPage(self.driver)
-        self.ts = TestStatus(self.driver)
+        self.ts = StatusVerifier(self.driver)
         
         
 
