@@ -14,7 +14,7 @@ class RegisterCoursesTests(unittest.TestCase):
     @pytest.fixture(autouse=True)
     def objectSetup(self, oneTimeSetUp):
         self.login_page = LoginPage(self.driver)
-        self.login_page.login("mjdwassouf@gmail.com", "mjd0957708653A")
+        self.login_page.login("adam", "Dinamo12@")
         time.sleep(3)
         self.home_page = HomePage(self.driver)
         self.home_page.go_to_course_page()
