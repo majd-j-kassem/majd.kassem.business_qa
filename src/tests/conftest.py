@@ -8,6 +8,13 @@ import tempfile
 import logging
 from base.web_driver_factory import WebDriverFactory # Your factory
 
+# --- NEW IMPORTS FOR API INTERACTION ---
+import requests
+import time
+# You might need specific imports for your API client or database utility
+# Example: from your_application.api_client import register_user_api, delete_user_api
+# Example: from your_application.db_utils import create_pending_teacher_db, delete_teacher_db
+
 # Configure logging
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -27,6 +34,80 @@ def browser(request):
 def base_url_from_cli(request):
     """Fixture to get the --base-url option value."""
     return request.config.getoption("--baseurl")
+
+# --- NEW FIXTURE FOR CREATING PENDING TEACHER VIA API/DB ---
+# This fixture has function scope because we want a new pending teacher for each test that uses it.
+@pytest.fixture(scope="function")
+def create_pending_teacher_api():
+    """
+    Fixture to create a new teacher with a 'pending' status via API (or direct DB insert).
+    This avoids UI interaction for setting up test data, making the test faster and more focused.
+    Yields the email of the created pending teacher.
+    """
+    teacher_email = f"pending_teacher_{int(time.time() * 1000)}@example.com"
+    teacher_password = "TestPassword123!" # A strong, consistent password for this test user
+
+    # --- CONFIGURATION FOR YOUR API (REPLACE THESE) ---
+    API_BASE_URL = "http://127.0.0.1:8000/api" # <-- **UPDATE THIS to your actual API base URL**
+    ADMIN_API_HEADERS = {
+        "Content-Type": "application/json",
+        "Authorization": "Token your_admin_api_token_here" # <-- **UPDATE THIS with your actual admin API token/auth**
+                                                            # (e.g., 'Bearer <token>', 'Basic <credentials>', etc.)
+    }
+    # Example API endpoint for registering a user that defaults to pending
+    # Or, an admin endpoint to create a user with a specific status
+    REGISTER_API_ENDPOINT = f"{API_BASE_URL}/users/register/"
+    # Example API endpoint for deleting a user (for teardown)
+    DELETE_USER_API_ENDPOINT = f"{API_BASE_URL}/admin/users/delete_by_email/"
+
+
+    log.info(f"\n[Fixture] Attempting to create pending teacher: {teacher_email} via API.")
+    
+    try:
+        # --- YOUR APPLICATION-SPECIFIC API CALL TO CREATE PENDING USER ---
+        # This is a generic example. You need to adapt it to your actual API.
+        # It might be a registration endpoint where new users are pending by default,
+        # or an admin endpoint to directly create a user with a specific status.
+        payload = {
+            "email": teacher_email,
+            "password": teacher_password,
+            "role": "teacher", # Assuming your system has roles, and this registers a teacher
+            "is_active": False, # Often, pending users are not 'active'
+            "status": "pending" # If your system has a direct status field on registration
+        }
+        
+        # Example: Using requests to make an API call
+        response = requests.post(REGISTER_API_ENDPOINT, json=payload, headers=ADMIN_API_HEADERS)
+        response.raise_for_status() # Raises HTTPError for bad responses (4xx or 5xx)
+        
+        # If your registration API returns user details, you might want to log/store them
+        user_data = response.json()
+        log.info(f"[Fixture] Successfully created user via API. Response: {user_data}")
+        
+        yield teacher_email # This is what the test function will receive
+
+    except requests.exceptions.RequestException as e:
+        log.error(f"[Fixture] Failed to create pending teacher via API: {e}")
+        pytest.fail(f"Fixture failed to create pending teacher via API. Ensure API is running and configured: {e}")
+    except Exception as e:
+        log.error(f"[Fixture] An unexpected error occurred during pending teacher creation: {e}")
+        pytest.fail(f"Fixture failed due to unexpected error: {e}")
+    finally:
+        # --- TEARDOWN: CLEAN UP THE CREATED TEACHER ---
+        log.info(f"[Fixture] Cleaning up created teacher: {teacher_email}")
+        try:
+            # Example: API call to delete the user by email
+            delete_payload = {"email": teacher_email}
+            delete_response = requests.delete(DELETE_USER_API_ENDPOINT, json=delete_payload, headers=ADMIN_API_HEADERS)
+            delete_response.raise_for_status()
+            log.info(f"[Fixture] Successfully cleaned up teacher: {teacher_email}")
+        except requests.exceptions.RequestException as e:
+            log.error(f"[Fixture] Failed to delete teacher {teacher_email} via API during cleanup: {e}")
+            # Do not fail the test here, but log the cleanup issue.
+        except Exception as e:
+            log.error(f"[Fixture] Unexpected error during teacher cleanup for {teacher_email}: {e}")
+
+# --- EXISTING FIXTURES CONTINUE BELOW ---
 
 @pytest.fixture(scope="class")
 def oneTimeSetUp(request, browser, base_url_from_cli): # Now these are correctly passed as arguments
@@ -75,7 +156,6 @@ def oneTimeSetUp(request, browser, base_url_from_cli): # Now these are correctly
             # Catch common WebDriver-related exceptions and skip tests explicitly
             log.error(f"Failed to get WebDriver instance: {e}")
             pytest.skip(f"Could not initialize WebDriver for browser '{browser}': {e}. Please check driver compatibility and installation.")
-            # The 'return' here is important to exit the fixture gracefully
             return # This ensures the rest of the fixture doesn't run if skipped
 
         driver.implicitly_wait(10) # Good practice for initial element loading

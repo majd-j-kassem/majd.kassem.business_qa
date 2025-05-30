@@ -249,3 +249,45 @@ class SeleniumDriver():
             self.log.error(f"An error occurred while waiting for invisibility of '{locator}' ({locatorType}): {e}")
             self.take_screenshot_on_failure(locator, locatorType, "invisibility_error")
             return False
+            
+    # --- New Methods Added Below ---
+
+    def wait_for_page_load(self, timeout=30):
+        """
+        Waits for the page to fully load by checking document.readyState.
+        """
+        self.log.info(f"Waiting for page to load (document.readyState == 'complete') for up to {timeout} seconds.")
+        try:
+            WebDriverWait(self.driver, timeout).until(
+                lambda driver: driver.execute_script("return document.readyState") == "complete"
+            )
+            self.log.info("Page loaded successfully.")
+        except TimeoutException:
+            self.log.error(f"Page did not load within {timeout} seconds (document.readyState != 'complete').")
+            self.take_screenshot_on_failure("page_load_timeout", "browser", "page_load_timeout") # Use a generic locator for screenshot
+            raise # Re-raise the exception to fail the test if the page doesn't load
+        except Exception as e:
+            self.log.error(f"An unexpected error occurred while waiting for page load: {e}")
+            self.take_screenshot_on_failure("page_load_error", "browser", "page_load_error")
+            raise
+
+    def get_text_of_element(self, locator, locatorType="id", timeout=10, pollFrequency=0.5) -> str:
+        """
+        Gets the text of an element after waiting for it to be visible.
+        Returns empty string if element is not found or has no text.
+        """
+        element_text = ""
+        try:
+            element = self.get_element(locator, locatorType, timeout=timeout,
+                                       pollFrequency=pollFrequency, condition=EC.visibility_of_element_located)
+            if element:
+                element_text = element.text
+                self.log.info(f"Retrieved text '{element_text}' from element with locator: '{locator}' and type: '{locatorType}'")
+            else:
+                self.log.warning(f"Could not get text: Element was not found or not visible "
+                                 f"with locator: '{locator}' and type: '{locatorType}' after {timeout} seconds.")
+        except Exception as e:
+            self.log.error(f"An error occurred while getting text from element '{locator}' ({locatorType}). Error: {e}")
+            self.take_screenshot_on_failure(locator, locatorType, "get_text_error")
+            # Don't re-raise here, return empty string as per function contract
+        return element_text
