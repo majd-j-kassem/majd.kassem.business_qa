@@ -12,6 +12,7 @@ class HomePage(SeleniumDriver):
     # Locators for elements on the Home Page
     _course_menu_link = "//a[normalize-space()='Courses']"
     _course_menu_link_type = "xpath" # Added explicit type for clarity
+    _join_as_teacher_link = "//a[normalize-space()='Join us as a teacher']"
 
     def go_to_course_page(self):
         """
@@ -24,4 +25,17 @@ class HomePage(SeleniumDriver):
             self.log.info("Successfully navigated to Courses page.")
         except Exception as e:
             self.log.error(f"Failed to navigate to Courses page. Error: {e}")
+            raise # Re-raise the exception to fail the test if navigation fails
+
+    def go_to_teacher_signup_page(self):
+        """
+        Navigates to the Teacher Join flow page by clicking the 'Join us as a teacher' link in the Footer.
+        """
+        self.log.info("Attempting to navigate to Join as a Teacher page.")
+        try:
+            # Re-locate the element just before clicking to avoid StaleElementReferenceException
+            self.click_element(locator=self._join_as_teacher_link, locatorType="xpath")
+            self.log.info("Successfully navigated to Join As a Teacher page.")
+        except Exception as e:
+            self.log.error(f"Failed to navigate to Teacher page. Error: {e}")
             raise # Re-raise the exception to fail the test if navigation fails

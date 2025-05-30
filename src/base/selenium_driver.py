@@ -1,19 +1,21 @@
 from selenium.webdriver.common.by import By
-from traceback import print_stack # Kept for potential advanced debugging if needed
+from traceback import print_stack
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import *
+from selenium.common.exceptions import (
+    NoSuchElementException, TimeoutException, ElementClickInterceptedException,
+    StaleElementReferenceException, ElementNotInteractableException
+)
 import time
 import logging
-import os # Import os for path manipulation and directory creation
-import utilities.custome_logger as cl # Assuming this is your custom logger setup
+import os
+import utilities.custome_logger as cl
+from selenium.webdriver.remote.webelement import WebElement # Import WebElement for type hinting
 
 class SeleniumDriver():
 
     def __init__(self, driver):
         self.driver = driver
-        # Initialize the logger for this class instance
-        # Ensure your customLogger returns a logger instance correctly
         self.log = cl.CustomLogger(logging.DEBUG)
 
     def getByType(self, locatorType):
@@ -37,12 +39,13 @@ class SeleniumDriver():
             return By.PARTIAL_LINK_TEXT
         else:
             self.log.error(f"Locator type '{locatorType}' not correct/supported.")
-            return False # Indicate invalid type
+            return False
 
-    def get_element(self, locator, locatorType="id", timeout=10, pollFrequency=0.5, condition=EC.presence_of_element_located):
+    def get_element(self, locator, locatorType="id", timeout=10, pollFrequency=0.5, condition=EC.presence_of_element_located) -> WebElement:
         """
         Waits for an element based on a specified expected_condition and returns it.
         Default condition: EC.presence_of_element_located (element in DOM).
+        Includes error logging and screenshot on failure.
         """
         element = None
         try:
@@ -60,25 +63,30 @@ class SeleniumDriver():
         except TimeoutException:
             self.log.error(f"Element NOT found or condition '{condition.__name__}' not met: '{locator}' ({locatorType}) "
                            f"after {timeout} seconds. TimeoutException occurred.")
-            self.take_screenshot_on_failure(locator, locatorType) # Take screenshot on timeout
+            self.take_screenshot_on_failure(locator, locatorType, "timeout")
+        except NoSuchElementException:
+            self.log.error(f"No such element: '{locator}' ({locatorType}).")
+            self.take_screenshot_on_failure(locator, locatorType, "no_such_element")
+        except StaleElementReferenceException:
+            self.log.error(f"Stale element reference for: '{locator}' ({locatorType}). Element re-rendered.")
+            self.take_screenshot_on_failure(locator, locatorType, "stale_element")
         except Exception as e:
-            self.log.error(f"An unexpected error occurred while getting element '{locator}' ({locatorType}). Error: {e}")
-            self.take_screenshot_on_failure(locator, locatorType) # Take screenshot on other exceptions
+            self.log.error(f"An unexpected error occurred while getting element '{locator}' ({locatorType}): {e}")
+            self.take_screenshot_on_failure(locator, locatorType, "unexpected_get_error")
         return element
 
-    def take_screenshot_on_failure(self, locator, locatorType):
+    def take_screenshot_on_failure(self, locator, locatorType, event_type="failure"):
         """
         Helper method to take a screenshot when an element interaction fails.
+        `event_type` helps categorize the screenshot (e.g., "timeout", "retry_intercepted").
         """
         try:
             screenshot_dir = "screenshots"
-            # Ensure the screenshots directory exists
             if not os.path.exists(screenshot_dir):
                 os.makedirs(screenshot_dir)
 
-            # Sanitize locator for filename, replacing spaces and slashes
-            sanitized_locator = locator.replace(' ', '_').replace('/', '_').replace('.', '_')
-            screenshot_name = f"failure_{sanitized_locator}_{locatorType}_{time.time()}.png"
+            sanitized_locator = locator.replace(' ', '_').replace('/', '_').replace('.', '_').replace('[', '').replace(']', '').replace('=', '_').replace("'", "")
+            screenshot_name = f"{event_type}_{sanitized_locator}_{locatorType}_{int(time.time())}.png"
             screenshot_path = os.path.join(screenshot_dir, screenshot_name)
             
             self.driver.save_screenshot(screenshot_path)
@@ -86,55 +94,77 @@ class SeleniumDriver():
         except Exception as screenshot_e:
             self.log.error(f"Failed to take screenshot: {screenshot_e}")
 
-    def click_element(self, locator, locatorType="id", timeout=10, pollFrequency=0.5):
+    def click_element(self, locator, locatorType="id", timeout=10, pollFrequency=0.5, retry_attempts=2):
         """
         Clicks on an element after waiting for it to be clickable.
+        Includes robust error handling, scrolling, and a retry mechanism for flakiness.
         """
-        try:
-            # Use get_element, explicitly waiting for it to be clickable
-            element = self.get_element(locator, locatorType, timeout=timeout,
-                                       pollFrequency=pollFrequency, condition=EC.element_to_be_clickable)
-            if element: # Check if element was successfully found and is clickable
-                element.click()
-                self.log.info(f"Clicked element with locator: '{locator}' and type: '{locatorType}'")
-            else:
-                self.log.error(f"Could not click element: Element was not found or not clickable "
-                               f"with locator: '{locator}' and type: '{locatorType}' after {timeout} seconds.")
-                # Raise an explicit exception if the element wasn't clickable after the wait
-                raise ElementClickInterceptedException(f"Element not clickable: {locator} ({locatorType})")
-        except Exception as e:
-            self.log.error(f"An error occurred while clicking element '{locator}' ({locatorType}). Error: {e}")
-            # The get_element method already calls take_screenshot_on_failure on TimeoutException,
-            # but if another exception occurs during the click itself, it's captured here.
-            # self.take_screenshot_on_failure(locator, locatorType) # Uncomment if you want an extra screenshot
-            raise # Re-raise the exception to fail the test
+        attempts = 0
+        while attempts <= retry_attempts:
+            try:
+                # 1. Wait for the element to be clickable
+                element = self.get_element(locator, locatorType, timeout=timeout,
+                                           pollFrequency=pollFrequency, condition=EC.element_to_be_clickable)
+                
+                if element:
+                    # 2. Scroll the element into view explicitly
+                    # Using 'center' for block and inline makes it more robust for various layouts
+                    self.driver.execute_script("arguments[0].scrollIntoView({block: 'center', inline: 'center'});", element)
+                    time.sleep(0.1) # Small pause after scrolling to let browser render
+
+                    # 3. Attempt the click
+                    element.click()
+                    self.log.info(f"Clicked element with locator: '{locator}' and type: '{locatorType}' (Attempt {attempts + 1})")
+                    return True # Success
+                else:
+                    self.log.error(f"Element '{locator}' ({locatorType}) not found or not clickable after {timeout}s.")
+                    # If get_element returns None, it already logged the reason and took a screenshot.
+                    break # Exit loop if element itself wasn't found/clickable after initial wait
+            
+            except (ElementClickInterceptedException, StaleElementReferenceException) as e:
+                self.log.warning(f"Click intercepted or stale element for '{locator}' ({locatorType}). "
+                                 f"Attempt {attempts + 1} failed. Retrying... Error: {e}")
+                self.take_screenshot_on_failure(locator, locatorType, f"retry_{attempts + 1}_intercepted")
+                attempts += 1
+                time.sleep(0.5) # Small pause before retrying
+            except Exception as e:
+                self.log.error(f"An unexpected error occurred while clicking element '{locator}' ({locatorType}). "
+                               f"Error: {e}. Attempt {attempts + 1} failed.")
+                self.take_screenshot_on_failure(locator, locatorType, f"retry_{attempts + 1}_unexpected")
+                attempts += 1
+                time.sleep(0.5) # Small pause before retrying
+        
+        # If all attempts fail, raise a more specific exception for the test to catch
+        self.log.critical(f"Failed to click element: '{locator}' ({locatorType}) after {retry_attempts + 1} attempts.")
+        self.take_screenshot_on_failure(locator, locatorType, "final_click_failure")
+        raise ElementClickInterceptedException(f"Element not clickable after multiple attempts: {locator} ({locatorType})")
+
 
     def send_keys_element(self, data, locator, locatorType="id", timeout=10, pollFrequency=0.5):
         """
-        Sends data to an element after waiting for it to be visible.
+        Sends data to an element after waiting for it to be visible and interactable.
         """
         try:
-            # Use get_element, explicitly waiting for it to be visible
             element = self.get_element(locator, locatorType, timeout=timeout,
                                        pollFrequency=pollFrequency, condition=EC.visibility_of_element_located)
-            if element: # Check if element was successfully found and is visible
+            if element:
+                # Clear existing text before sending keys
+                element.clear() 
                 element.send_keys(data)
                 self.log.info(f"Sent data '{data}' to element with locator: '{locator}' and type: '{locatorType}'")
             else:
                 self.log.error(f"Could not send data: Element was not found or not visible "
                                f"with locator: '{locator}' and type: '{locatorType}' after {timeout} seconds.")
-                # Raise an explicit exception if the element wasn't visible after the wait
                 raise ElementNotInteractableException(f"Element not interactable (not visible): {locator} ({locatorType})")
         except Exception as e:
             self.log.error(f"An error occurred while sending keys to element '{locator}' ({locatorType}). Error: {e}")
-            # self.take_screenshot_on_failure(locator, locatorType) # Uncomment if you want an extra screenshot
-            raise # Re-raise the exception to fail the test
+            self.take_screenshot_on_failure(locator, locatorType, "send_keys_error")
+            raise
 
     def isElementPresent(self, locator, locatorType="id", timeout=5, pollFrequency=0.5):
         """
         Checks if an element is present in the DOM (not necessarily visible) within a timeout.
         """
-        # Re-use get_element, defaulting to presence_of_element_located
         element = self.get_element(locator, locatorType, timeout=timeout,
                                    pollFrequency=pollFrequency, condition=EC.presence_of_element_located)
         if element is not None:
@@ -147,9 +177,7 @@ class SeleniumDriver():
     def isElementVisible(self, locator, locatorType="id", timeout=10, pollFrequency=0.5):
         """
         Checks if an element is present in the DOM AND visible within a timeout.
-        This method is kept similar to your original, but now internally relies on get_element.
         """
-        # Re-use get_element, explicitly waiting for visibility
         element = self.get_element(locator, locatorType, timeout=timeout,
                                    pollFrequency=pollFrequency, condition=EC.visibility_of_element_located)
         if element is not None:
@@ -157,10 +185,9 @@ class SeleniumDriver():
             return True
         else:
             self.log.info(f"Element NOT visible: '{locator}' ({locatorType}) after {timeout} seconds.")
-            # Screenshot is already taken by get_element if it timed out.
             return False
 
-    def elementPresenceCheck(self, locator, locatorType="id"): # Renamed from original to be more explicit if used for lists
+    def elementPresenceCheck(self, locator, locatorType="id"):
         """
         Checks if ANY elements match the locator using find_elements, without explicit waits.
         Useful for checking if elements *should not* exist or counting multiple elements.
@@ -182,17 +209,43 @@ class SeleniumDriver():
             self.log.error(f"An error occurred while checking for element list presence for '{locator}' ({locatorType}). Error: {e}")
             return False
 
-    # The old 'waitForElement' method has been removed. Its functionality is now covered
-    # by the enhanced 'get_element' method and the robust 'isElementVisible'.
-    # This removes redundant code and avoids problematic implicit_wait manipulations.
     def webScroll(self, direction="up"):
         """
-        NEW METHOD
+        Scrolls the web page up or down.
         """
         if direction == "up":
-            # Scroll Up
             self.driver.execute_script("window.scrollBy(0, -800);")
-
+            self.log.info("Scrolled page up by 800 pixels.")
         if direction == "down":
-            # Scroll Down
             self.driver.execute_script("window.scrollBy(0, 800);")
+            self.log.info("Scrolled page down by 800 pixels.")
+
+    def wait_for_element_to_be_invisible(self, locator, locatorType="id", timeout=10, pollFrequency=0.5):
+        """
+        Waits for an element to become invisible. Useful for loading spinners or modals.
+        """
+        try:
+            byType = self.getByType(locatorType)
+            if not byType:
+                self.log.error(f"Invalid locator type provided for '{locator}'. Cannot wait for invisibility.")
+                return False
+            
+            self.log.info(f"Waiting for invisibility of element with locator: '{locator}' "
+                          f"and type: '{locatorType}' for {timeout} seconds.")
+            wait = WebDriverWait(self.driver, timeout, poll_frequency=pollFrequency)
+            invisible = wait.until(EC.invisibility_of_element_located((byType, locator)))
+            if invisible:
+                self.log.info(f"Element '{locator}' ({locatorType}) is now invisible.")
+                return True
+            else:
+                self.log.warning(f"Element '{locator}' ({locatorType}) is still visible after {timeout} seconds.")
+                self.take_screenshot_on_failure(locator, locatorType, "still_visible")
+                return False
+        except TimeoutException:
+            self.log.warning(f"Element '{locator}' ({locatorType}) did not become invisible within {timeout} seconds. TimeoutException occurred.")
+            self.take_screenshot_on_failure(locator, locatorType, "invisibility_timeout")
+            return False
+        except Exception as e:
+            self.log.error(f"An error occurred while waiting for invisibility of '{locator}' ({locatorType}): {e}")
+            self.take_screenshot_on_failure(locator, locatorType, "invisibility_error")
+            return False

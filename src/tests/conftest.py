@@ -1,27 +1,39 @@
 import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service as ChromeService # Import Service here too if you need it for local runs
+from selenium.webdriver.chrome.service import Service as ChromeService
 import os
 import shutil
-import tempfile # Make sure tempfile is imported
-import logging # Optional, for better logging
-from  base.web_driver_factory import WebDriverFactory # Your factory
-# Configure logging (optional, but good for debugging)
+import tempfile
+import logging
+from base.web_driver_factory import WebDriverFactory # Your factory
+
+# Configure logging
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
 
 def pytest_addoption(parser):
     parser.addoption("--browser", action="store", default="chrome", help="Type of browser: chrome or firefox")
-    parser.addoption("--baseurl", action="store", default="https://majd-kassem-business-dev.onrender.com/", help="Base URL for testing")
+    parser.addoption("--baseurl", action="store", default="http://127.0.0.1:8000/", help="Base URL for testing")
+
+# Move browser and base_url fixtures to the top and ensure they are session scoped
+@pytest.fixture(scope="session")
+def browser(request):
+    """Fixture to get the --browser option value."""
+    return request.config.getoption("--browser")
+
+@pytest.fixture(scope="session")
+def base_url_from_cli(request):
+    """Fixture to get the --base-url option value."""
+    return request.config.getoption("--baseurl")
 
 @pytest.fixture(scope="class")
-def oneTimeSetUp(request, browser, base_url_from_cli):
+def oneTimeSetUp(request, browser, base_url_from_cli): # Now these are correctly passed as arguments
     log.info(f"Running one time setUp for browser: {browser}")
     driver_options = None
     temp_user_data_dir = None
-   
+    driver = None # Initialize driver to None
 
     try:
         if browser == "chrome" or browser == "chrome-headless":
@@ -47,25 +59,45 @@ def oneTimeSetUp(request, browser, base_url_from_cli):
 
         elif browser == "firefox":
             # Add Firefox specific options here if needed
-            pass
+            log.info("Configuring Firefox browser.")
+            # Example:
+            # firefox_options = webdriver.FirefoxOptions()
+            # driver_options = firefox_options
+            pass # Keep pass if no specific options are needed
 
+        # --- CRITICAL CHANGE HERE ---
         wdf = WebDriverFactory(browser)
-        # Pass driver_options to the factory method
-        driver = wdf.getWebDriverInstance(driver_options=driver_options) # This line remains the same
+        try:
+            # Pass driver_options to the factory method
+            driver = wdf.getWebDriverInstance(driver_options=driver_options)
+            log.info("WebDriver instance obtained successfully.")
+        except Exception as e:
+            # Catch common WebDriver-related exceptions and skip tests explicitly
+            log.error(f"Failed to get WebDriver instance: {e}")
+            pytest.skip(f"Could not initialize WebDriver for browser '{browser}': {e}. Please check driver compatibility and installation.")
+            # The 'return' here is important to exit the fixture gracefully
+            return # This ensures the rest of the fixture doesn't run if skipped
+
         driver.implicitly_wait(10) # Good practice for initial element loading
         driver.get(base_url_from_cli)
+        log.info(f"Navigated to Base URL: {base_url_from_cli}")
+
 
         if request.cls:
             request.cls.driver = driver
             request.cls.base_url = base_url_from_cli
-
+        
         yield driver
 
     finally:
         log.info("Running one time tearDown (from finally block).")
-        if 'driver' in locals() and driver: # Check if driver was successfully initialized
-            driver.quit()
-            log.info("WebDriver quit.")
+        # Check if driver was successfully initialized before quitting
+        if driver:
+            try:
+                driver.quit()
+                log.info("WebDriver quit.")
+            except Exception as e:
+                log.error(f"Error quitting WebDriver: {e}")
 
         # Clean up the temporary user data directory
         if temp_user_data_dir and os.path.exists(temp_user_data_dir):
@@ -80,15 +112,3 @@ def setUp():
     log.info("Running method level setUp")
     yield
     log.info("Running method level tearDown")
-    
-# --- ADD THESE TWO NEW FIXTURES ---
-@pytest.fixture(scope="session")
-def browser(request):
-    """Fixture to get the --browser option value."""
-    return request.config.getoption("--browser")
-
-@pytest.fixture(scope="session")
-def base_url_from_cli(request):
-    """Fixture to get the --base-url option value."""
-    return request.config.getoption("--baseurl")
-# --- END NEW FIXTURES ---

@@ -6,7 +6,7 @@ import logging
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException, NoAlertPresentException, StaleElementReferenceException
-
+import time 
 class CoursesPage(SeleniumDriver):
 
     def __init__(self, driver):
@@ -253,10 +253,13 @@ class CoursesPage(SeleniumDriver):
         # However, `click_register_course` (which calls `click_element`) should handle its own scrolling.
         # Keep this if you observe the 'Register for Course' button is still off-screen initially
         # after the Course Detail page/modal loads.
-        self.webScroll("down") 
+        #self.webScroll("down")
+        self.webScroll("down")
+        time.sleep(4) 
         self.click_register_course()
         
         # Scroll down again if needed for the payment form fields
+        self.webScroll("down")
         self.webScroll("down")
         self.enter_credit_card_info(card_num, card_exp_month, card_exp_year)
         self.click_pay_button()

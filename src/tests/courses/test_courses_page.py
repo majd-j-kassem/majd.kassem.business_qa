@@ -14,7 +14,7 @@ class RegisterCoursesTests(unittest.TestCase):
     @pytest.fixture(autouse=True)
     def objectSetup(self, oneTimeSetUp):
         self.login_page = LoginPage(self.driver)
-        self.login_page.login("adam", "Dinamo12@")
+        self.login_page.login("ali", "Dinamo12@")
         time.sleep(3)
         self.home_page = HomePage(self.driver)
         self.home_page.go_to_course_page()
@@ -24,11 +24,12 @@ class RegisterCoursesTests(unittest.TestCase):
         
         
 
-    @pytest.mark.run(order=1)
+    #@pytest.mark.run(order=1)
+    @pytest.mark.nondestructive
     def test_invalidEnrollment(self):
         #self.courses.enterCourseName("JavaScript")
         #self.courses.selectCourseToEnroll("JavaScript for beginners")
-        self.courses_page.enroll_course(card_num="1234", card_exp_mont="1", card_exp_year="2026")
+        self.courses_page.enroll_course(card_num="1234", card_exp_month="1", card_exp_year="2026")
         result = self.courses_page.verifyEnrollFailed()
         self.ts.markFinal("test_invalidEnrollment", result,
                           "Enrollment Failed Verification")
