@@ -9,8 +9,10 @@ import pytest
 class TestLogin(unittest.TestCase):
     
     @pytest.fixture(autouse=True)
-    def classSetup(self, oneTimeSetUp):
-        self.login_page = LoginPage(self.driver)
+    def classSetup(self, oneTimeSetUp, base_url):
+        self.driver = oneTimeSetUp
+        self.login_page = LoginPage(self.driver,base_url)
+        self.base_url = base_url 
     
     
     @pytest.mark.run(order = 2)

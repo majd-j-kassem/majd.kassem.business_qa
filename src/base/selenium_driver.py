@@ -14,7 +14,7 @@ from selenium.webdriver.remote.webelement import WebElement # Import WebElement 
 
 class SeleniumDriver():
 
-    def __init__(self, driver):
+    def __init__(self, driver, base_url):
         self.driver = driver
         self.log = cl.CustomLogger(logging.DEBUG)
 
@@ -161,7 +161,7 @@ class SeleniumDriver():
             self.take_screenshot_on_failure(locator, locatorType, "send_keys_error")
             raise
 
-    def isElementPresent(self, locator, locatorType="id", timeout=5, pollFrequency=0.5):
+    def is_element_present(self, locator, locatorType="id", timeout=5, pollFrequency=0.5):
         """
         Checks if an element is present in the DOM (not necessarily visible) within a timeout.
         """
@@ -174,7 +174,7 @@ class SeleniumDriver():
             self.log.info(f"Element NOT found present in DOM: '{locator}' ({locatorType}) after {timeout} seconds.")
             return False
 
-    def isElementVisible(self, locator, locatorType="id", timeout=10, pollFrequency=0.5):
+    def is_element_visible(self, locator, locatorType="id", timeout=10, pollFrequency=0.5):
         """
         Checks if an element is present in the DOM AND visible within a timeout.
         """
@@ -250,8 +250,6 @@ class SeleniumDriver():
             self.take_screenshot_on_failure(locator, locatorType, "invisibility_error")
             return False
             
-    # --- New Methods Added Below ---
-
     def wait_for_page_load(self, timeout=30):
         """
         Waits for the page to fully load by checking document.readyState.

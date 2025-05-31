@@ -1,118 +1,109 @@
+# No logging import
 from selenium.webdriver.common.by import By
-from base.selenium_driver import SeleniumDriver
-# Removed unused imports: Select, WebDriverWait, expected_conditions as EC, various exceptions, time
-# These are handled by SeleniumDriver, so no need to import them directly here.
-import utilities.custome_logger as cl
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
-import logging
+from base.selenium_driver import SeleniumDriver
+import time
+from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, StaleElementReferenceException
 
 class AdminLoginPage(SeleniumDriver):
-    ################
-    ### Locators ###
-    ################
-    _admin_username_input = "//input[@placeholder='Username']"
-    _admin_password_input = "//input[@placeholder='Password']" # This is an XPath
-    
-    # You have 'password_locator = "id_password"'. If this is an actual ID,
-    # then your enter_password method will use it.
-    # If the password input also uses the placeholder and has no ID, then just use _admin_password_input
-    # I'll assume 'password_locator' is indeed an ID for now, as you changed its locatorType to "xpath" in enter_password.
-    # Let's clarify: if 'password_locator' is an ID like "id_password", it should be locatorType="id"
-    # If the password field is identified by "//input[@placeholder='Password']", then it should be locatorType="xpath"
-    # I will stick to 'password_locator' being an ID for now as per previous conversation, but ensure it's correct.
-    _password_input_id = "id_password" # Renamed for clarity if it's an ID
-
-    login_button_locator = "//button[@class = 'login-button']"
-
-    # Proper locator for logout if you ever implement it
-    _logout_link = (By.LINK_TEXT, "Logout") # Example, needs proper By. locator
-
-    _error_message_login_locator = "//li[@class='error approval-message']" # Consistent naming
-
-    # THIS IS THE LOCATOR YOU NEED TO UPDATE after inspecting your admin dashboard HTML
-    _admin_dashboard_header = "//h1[contains(text(), 'Admin Dashboard')]" # Example XPath for a dashboard header
-    # OR _admin_dashboard_header = "dashboardHeaderId" # Example ID for a dashboard header
-
-    ADMIN_LOGIN_PATH = "/admin/" # Specific path relative to base_url
-
-    ############################
-    ### Element Interactions ###
-    ############################
 
     def __init__(self, driver, base_url):
-        super().__init__(driver) # Correctly initializes self.driver and self.log from SeleniumDriver
-        # self.driver = driver # REMOVE THIS LINE - it's redundant. self.driver is already set by super()
-        self.base_url = base_url # Store base_url
-        # self.log = cl.customLogger(logging.DEBUG) # Already initialized in SeleniumDriver's __init__
+        super().__init__(driver, base_url) # Pass base_url to the parent class
+        # IMPORTANT: Explicitly assign base_url to self here as well
+        # This acts as a safeguard to ensure it's available in this specific class's instance
+        self.base_url = base_url # <--- ADD THIS LINE HERE
 
+        # Locators
+        # Now self.base_url should definitely be available
+        self._admin_login_url = f"{self.base_url}admin/"
+        self._username_input = "//input[@placeholder='Username']"
+        self._password_input = "//input[@placeholder='Password']"
+        self._login_button = "//button[normalize-space()='Log in' or @type='submit']"
+        self._dashboard_header = "//h1[@class='h4 m-0 pr-3 mr-3 border-right']"
+        self._error_message = "//p[contains(text(),'Please enter the correct username and password for')]"
 
-    def open(self):
-        """Navigates directly to the admin login page."""
-        full_admin_url = f"{self.base_url}{self.ADMIN_LOGIN_PATH}"
-        self.log.info(f"Navigating to Admin Login Page: {full_admin_url}")
-        self.driver.get(full_admin_url)
-        self.wait_for_page_load() # Good, relies on SeleniumDriver
+        # Locators for logout
+        self._profile_dropdown_trigger = "//i[@class='far fa-user']"
+        self._logout_button_locator = "//button[@type='submit' and normalize-space()='Log out']" 
 
+    def navigate_to_admin_login_page(self):
+        print(f"Navigating to Admin Login Page: {self._admin_login_url}")
+        self.driver.get(self._admin_login_url)
+        self.wait_for_page_load()
 
     def enter_username(self, username):
-        # CORRECTED: locatorType should be "xpath" for "//input[@placeholder='Username']"
-        self.send_keys_element(username, self._admin_username_input, locatorType="xpath")
-        self.log.info(f"Entered username: {username}")
-
+        self.send_keys_element(username, self._username_input, locatorType="xpath")
+        print(f"Entered username: {username}")
 
     def enter_password(self, password):
-        # You had password_locator = "id_password" and locatorType="xpath".
-        # If "id_password" is truly an ID, it should be locatorType="id".
-        # If you are using "//input[@placeholder='Password']", it should be locatorType="xpath".
-        # I'm going with the placeholder XPath for consistency with username, assuming 'id_password' was a typo or less reliable.
-        self.send_keys_element(password, self._admin_password_input, locatorType="xpath")
-        self.log.info(f"Entered password.")
-
+        self.send_keys_element(password, self._password_input, locatorType="xpath")
+        print("Entered password.")
 
     def click_login_button(self):
-        self.click_element(self.login_button_locator, locatorType="xpath")
-        self.log.info("Clicked login button.")
-
-        try:
-            # THIS IS THE LOCATOR THAT NEEDS TO BE UPDATED WITH YOUR ACTUAL DASHBOARD ELEMENT
-            # Use the _admin_dashboard_header locator defined above, with its correct type.
-            self.get_element(locator=self._admin_dashboard_header, locatorType="xpath", # Example for XPath
-                             condition=EC.visibility_of_element_located, timeout=10)
-            self.log.info("Admin dashboard element visible after login.")
-            # self.wait_for_page_load() # Optional: if you expect a full page refresh here
-
-        except TimeoutException:
-            error_msg = self.get_login_error_message()
-            if error_msg:
-                self.log.error(f"Login failed: {error_msg}")
-                raise Exception(f"Login failed: {error_msg}")
-            else:
-                self.log.critical("Login button clicked, but neither dashboard loaded nor error message found.")
-                self.take_screenshot_on_failure("post_login_state", "browser", "unexpected_login_state")
-                raise Exception("Unexpected state after login: Dashboard not loaded and no error message.")
-        except Exception as e:
-            self.log.error(f"An unexpected error occurred during post-login check: {e}")
-            raise
+        self.click_element(self._login_button, locatorType="xpath")
+        print("Clicked login button.")
 
     def admin_login(self, username, password):
-        """Performs the full admin login sequence."""
-        self.open()
+        self.navigate_to_admin_login_page()
         self.enter_username(username)
         self.enter_password(password)
         self.click_login_button()
-
-    def get_login_error_message(self):
-        """
-        Gets the text of the login error message if it's visible.
-        Returns empty string if no error message is found or element not visible.
-        """
-        return self.get_text_of_element(self._error_message_login_locator, locatorType="xpath", timeout=5)
+        
+        if self.is_element_visible(self._error_message, locatorType="xpath", timeout=2):
+            print("Login failed: Error message visible.")
+            return False
+        elif self.is_element_visible(self._dashboard_header, locatorType="xpath", timeout=10):
+            print("Admin login successful.")
+            return True
+        else:
+            print("Login failed: Neither dashboard nor error message detected. Unknown state.")
+            self.take_screenshot_on_failure("admin_login_unknown_state", "page")
+            return False
 
     def is_logged_in_as_admin(self):
-        """
-        Checks if the admin is successfully logged in by verifying a unique element
-        on the admin dashboard.
-        """
-        # Uses the _admin_dashboard_header locator defined above
-        return self.isElementVisible(self._admin_dashboard_header, locatorType="xpath", timeout=5)
+        is_visible = self.is_element_visible(self._dashboard_header, locatorType="xpath")
+        if is_visible:
+            print("Admin dashboard element visible after login.")
+        else:
+            print("Admin dashboard element NOT visible after login.")
+        return is_visible
+
+    def get_login_error_message(self):
+        error_element = self.get_element(self._error_message, locatorType="xpath", timeout=2)
+        if error_element:
+            return error_element.text.strip()
+        return None
+
+    def logout(self):
+        print("Attempting to log out from admin dashboard.")
+        try:
+            profile_dropdown_clicked = self.click_element(self._profile_dropdown_trigger, locatorType="xpath", timeout=10)
+
+            if profile_dropdown_clicked:
+                print("Clicked profile dropdown trigger.")
+                time.sleep(0.5)
+
+                if not self.click_element(self._logout_button_locator, locatorType="xpath", timeout=10):
+                    print(f"Failed to click logout button: '{self._logout_button_locator}'")
+                    raise ElementClickInterceptedException(f"Logout button not clickable after multiple attempts: {self._logout_button_locator}")
+
+                print("Successfully clicked logout button.")
+                
+                if not self.is_element_visible(self._username_input, locatorType="xpath", timeout=10):
+                     print("Logout failed: Did not redirect to login page or username input not visible after logout.")
+                     self.take_screenshot_on_failure("logout_redirection_failure", "page")
+                     raise TimeoutException("Logout failed: Did not land on login page as expected.")
+
+                print("Confirmed logout by verifying login page elements.")
+            else:
+                print("Profile dropdown trigger not found or not clickable for logout. Could not initiate logout flow.")
+                raise TimeoutException("Profile dropdown trigger not available for logout.")
+
+        except (ElementClickInterceptedException, TimeoutException, StaleElementReferenceException) as e:
+            print(f"An expected error occurred during logout: {e}")
+            self.take_screenshot_on_failure("logout_expected_failure", "page")
+            raise
+        except Exception as e:
+            print(f"A critical unexpected error occurred during logout: {e}")
+            self.take_screenshot_on_failure("logout_critical_failure", "page")
+            raise
