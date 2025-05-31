@@ -32,12 +32,7 @@ pipeline {
                     sh "mkdir -p allure-results"
                     sh "mkdir -p test-results" // For JUnit XML if you decide to use it separately
 
-                    // This is where you include the --alluredir flag
-                    // Assuming your tests are in 'src/tests' relative to the repo root.
-                    // This command will run your tests and put Allure's raw data in 'allure-results/'.
-                    // The --alluredir option takes precedence over pytest.ini if both are present.
-                    // IMPORTANT: Use -Dmaven.test.failure.ignore=true equivalent if your test runner aborts on first failure.
-                    // For pytest, it usually continues by default, but ensure the exit code doesn't stop the pipeline prematurely.
+    
                     sh "pytest src/tests --alluredir=allure-results --junitxml=test-results/junit_report.xml --browser chrome-headless --base-url ${params.STAGING_URL_PARAM}"
                 }
             }
