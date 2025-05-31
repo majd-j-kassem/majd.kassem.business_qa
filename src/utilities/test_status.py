@@ -16,11 +16,11 @@ class StatusVerifier(SeleniumDriver):
 
     log = cl.CustomLogger(logging.INFO)
 
-    def __init__(self, driver):
+    def __init__(self, driver, base_url):
         """
         Inits CheckPoint class
         """
-        super(StatusVerifier, self).__init__(driver)
+        super(StatusVerifier, self).__init__(driver, base_url)
         self.resultList = []
 
     def setResult(self, result, resultMessage):

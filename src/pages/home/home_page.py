@@ -5,8 +5,8 @@ import logging
 
 class HomePage(SeleniumDriver):
 
-    def __init__(self, driver):
-        super().__init__(driver)
+    def __init__(self, driver,base_url):
+        super().__init__(driver, base_url)
         self.log = cl.CustomLogger(logging.DEBUG) # Initialize logger for this page object
 
     # Locators for elements on the Home Page

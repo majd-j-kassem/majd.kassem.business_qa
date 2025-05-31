@@ -86,7 +86,7 @@ class TestAdminDashboardFeatures:
             # 3. Enter the user's edit page, set commission, and approve
             # Example: approve the teacher and set commission to 15.00
             assert self.admin_dashboard_page.change_user_status_and_commission(
-                self.PENDING_TEACHER_EMAIL, new_approval_status="Approved", commission_value="15.00"), \
+                self.PENDING_TEACHER_EMAIL, new_approval_status="Approved", commission_value="95.00"), \
                 f"Failed to approve teacher and set commission for {self.PENDING_TEACHER_EMAIL}."
 
             log.info(f"Successfully approved teacher {self.PENDING_TEACHER_EMAIL} and set commission to 15.00.")
@@ -99,7 +99,7 @@ class TestAdminDashboardFeatures:
 
             # Re-fetch status to confirm approval
             final_approval_status = self.admin_dashboard_page.get_user_status_from_list(
-                self.self.PENDING_TEACHER_EMAIL, status_type="approved")
+                self.PENDING_TEACHER_EMAIL, status_type="approved")
             log.info(f"Final approval status for {self.PENDING_TEACHER_EMAIL}: {final_approval_status}")
 
             assert final_approval_status == "Approved", \

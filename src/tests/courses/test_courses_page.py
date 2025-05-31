@@ -12,15 +12,15 @@ import time
 @pytest.mark.usefixtures("oneTimeSetUp", "setUp")
 class RegisterCoursesTests(unittest.TestCase):
     @pytest.fixture(autouse=True)
-    def objectSetup(self, oneTimeSetUp):
-        self.login_page = LoginPage(self.driver)
+    def objectSetup(self, oneTimeSetUp, base_url):
+        self.login_page = LoginPage(self.driver,base_url)
+        self.base_url = base_url
         self.login_page.login("ali", "Dinamo12@")
         time.sleep(3)
-        self.home_page = HomePage(self.driver)
+        self.home_page = HomePage(self.driver, self.base_url)
+        self.courses_page = CoursesPage(self.driver, self.base_url)
         self.home_page.go_to_course_page()
-        time.sleep(3)
-        self.courses_page = CoursesPage(self.driver)
-        self.ts = StatusVerifier(self.driver)
+        self.ts = StatusVerifier(self.driver, self.base_url)
         
         
 

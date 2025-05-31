@@ -9,9 +9,9 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException,
 import time 
 class CoursesPage(SeleniumDriver):
 
-    def __init__(self, driver):
+    def __init__(self, driver, base_url):
         # Call the parent class (SeleniumDriver) constructor first.
-        super().__init__(driver)
+        super().__init__(driver, base_url)
         # Explicitly initialize self.log here for CoursesPage.
         # This ensures self.log is always available within this class,
         # even if there are subtle issues with inheritance of instance attributes.

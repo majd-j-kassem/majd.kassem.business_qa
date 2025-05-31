@@ -25,6 +25,27 @@ class AdminDashboardPage(SeleniumDriver):
         self._dashboard_header = "//h1[normalize-space()='Dashboard' or contains(text(), 'Welcome to the Admin Dashboard')]"
         self._user_profiles_link = "//a[./p[normalize-space()='User Profiles'] and contains(@href, '/admin/accounts/profile/')]"
         self._user_profiles_page_header = "//h1[@class='h4 m-0 pr-3 mr-3 border-right']" # Corrected based on screenshots
+
+         # --- Locators for elements used in this page object ---
+        # XPath to locate the link for a specific user (teacher) in the user list table.
+        # It handles cases where the user email might be in an `<a>` tag or a `<td>` cell.
+        self._USER_LINK_BY_EMAIL = "//tr[.//a[normalize-space()='{}'] or .//td[normalize-space()='{}']]//a[normalize-space()='{}']"
+
+        # XPath for the 'Teacher Application Status' tab on the user's edit page.
+        self._TEACHER_APPLICATION_STATUS_TAB = "//a[normalize-space()='Teacher Application Status']"
+
+        # ID for the commission percentage input field.
+        # Based on your previous logs, this has an `id` attribute.
+        self._COMMISSION_PERCENTAGE_INPUT = "id_commission_percentage"
+
+        # **CRITICAL**: XPath for the "Approve Teacher" button.
+        # This is how the approval action is triggered based on your clarification.
+        # Button type="submit" name="_approve_teacher" class="button default" style="..." Approve Teacher</button>
+        self._APPROVE_TEACHER_BUTTON = "//button[normalize-space()='Approve Teacher' and @name='_approve_teacher']"
+
+
+
+
         # Locator for the 'Teacher Application Status' tab on the user edit page
     # Using normalize-space() for robust text matching
         # Locators for user list table
@@ -120,158 +141,97 @@ class AdminDashboardPage(SeleniumDriver):
             self.log.error(f"An unexpected error occurred while getting user status icon: {e}")
             return None
 
-    def change_user_status_and_commission(self, email, new_approval_status="Approved", commission_value=None):
+    def change_user_status_and_commission(self, user_email, new_approval_status=None, commission_value=None):
         """
-        Navigates to a user's edit page, updates their approval status (approved/pending),
-        and optionally sets a commission percentage.
+        Navigates to a user's edit page, updates their commission percentage,
+        and changes their teacher approval status (Approved/Not Approved) via button clicks.
 
         Args:
-            email (str): The email of the user to modify.
-            new_approval_status (str): "Approved" to approve, "Pending" to set as pending.
-            commission_value (str, optional): The commission percentage (e.g., "15.00").
-                                              Defaults to None.
+            user_email (str): The email of the user (teacher) whose details are to be modified.
+            new_approval_status (str, optional): Desired approval status: "Approved" or "Not Approved".
+                                                If None, no approval action is performed.
+            commission_value (str, optional): The new commission percentage to set (e.g., "15.00").
+                                                If None, the commission is not changed.
 
         Returns:
-            bool: True if changes are saved successfully and success message is visible, False otherwise.
+            bool: True if all specified actions were performed successfully, False otherwise.
         """
-        self.log.info(f"Attempting to update status and commission for {email}.")
-        user_edit_link = self._user_edit_link_by_email(email)
+        self.log.info(f"Attempting to update status and commission for {user_email}.")
 
-        try:
-            # 1. Click on the user's edit link
-            if not self.click_element(user_edit_link, locatorType="xpath"):
-                self.log.error(f"Failed to click edit link for user {email}. User might not be visible or link locator is incorrect.")
-                self.take_screenshot_on_failure(f"click_user_edit_link_fail_{email}", "page")
-                return False
-            self.wait_for_page_load()
-            self.log.info(f"Navigated to edit page for {email}.")
-
-            # 2. Click the 'Teacher Application Status' tab
-            self.log.info("Attempting to click 'Teacher Application Status' tab.")
-            if not self.click_element(self._teacher_application_status_tab, locatorType="xpath"):
-                self.log.error("Failed to click 'Teacher Application Status' tab.")
-                self.take_screenshot_on_failure("tab_click_fail", "page")
-                return False
-            self.log.info("Clicked 'Teacher Application Status' tab.")
-            
-            # Wait for content inside the tab to be visible (e.g., commission input)
-            if not self.get_element(self._commission_percentage_input, 
-                                    locatorType="xpath", 
-                                    condition=EC.visibility_of_element_located, 
-                                    timeout=5):
-                self.log.error("Content inside 'Teacher Application Status' tab (commission input) did not become visible within 5 seconds.")
-                self.take_screenshot_on_failure("tab_content_not_visible", "page")
-                return False
-            self.log.info("Confirmed 'Teacher Application Status' tab content is visible.")
-
-            # 3. Handle 'Is teacher approved' checkbox
-            checkbox_element = None
-            try:
-                # Get the checkbox element
-                checkbox_element = self.get_element(self._is_teacher_approved_checkbox,
-                                                    locatorType="xpath",
-                                                    condition=EC.presence_of_element_located)
-                
-                if not checkbox_element:
-                    self.log.error(f"'Is teacher approved' checkbox not found or not visible for {email}.")
-                    self.take_screenshot_on_failure(f"find_approved_checkbox_fail_{email}", "page")
-                    return False
-
-                # Determine desired state and current state
-                is_approved_desired = (new_approval_status.lower() == "approved")
-                is_checkbox_checked = checkbox_element.is_selected()
-
-                if is_approved_desired and not is_checkbox_checked:
-                    # If desired is approved but not checked, click to check it
-                    self.log.info(f"Clicking 'Is teacher approved' checkbox to set to 'Approved' for {email}.")
-                    if not self.click_element(self._is_teacher_approved_checkbox, locatorType="xpath"):
-                        self.log.error(f"Failed to click 'Is teacher approved' checkbox to approve for {email}.")
-                        self.take_screenshot_on_failure(f"click_approve_checkbox_fail_{email}", "page")
-                        return False
-                elif not is_approved_desired and is_checkbox_checked:
-                    # If desired is pending/not approved but checked, click to uncheck it
-                    self.log.info(f"Clicking 'Is teacher approved' checkbox to set to 'Pending' for {email}.")
-                    if not self.click_element(self._is_teacher_approved_checkbox, locatorType="xpath"):
-                        self.log.error(f"Failed to click 'Is teacher approved' checkbox to set pending for {email}.")
-                        self.take_screenshot_on_failure(f"click_pending_checkbox_fail_{email}", "page")
-                        return False
-                else:
-                    self.log.info(f"'Is teacher approved' status is already as desired ({new_approval_status}) for {email}.")
-
-            except StaleElementReferenceException:
-                self.log.warning(f"StaleElementReferenceException when handling 'Is teacher approved' checkbox for {email}. Attempting to re-find.")
-                # Re-try getting the element
-                checkbox_element = self.get_element(self._is_teacher_approved_checkbox,
-                                                    locatorType="xpath",
-                                                    condition=EC.presence_of_element_located)
-                if not checkbox_element:
-                    self.log.error(f"Failed to re-find 'Is teacher approved' checkbox after stale error for {email}.")
-                    self.take_screenshot_on_failure(f"refind_approved_checkbox_fail_{email}", "page")
-                    return False
-                # Re-attempt the logic
-                is_approved_desired = (new_approval_status.lower() == "approved")
-                is_checkbox_checked = checkbox_element.is_selected()
-                if is_approved_desired and not is_checkbox_checked:
-                    self.log.info(f"Re-clicking 'Is teacher approved' checkbox to set to 'Approved' for {email} after stale.")
-                    if not self.click_element(self._is_teacher_approved_checkbox, locatorType="xpath"):
-                        self.log.error(f"Failed to re-click 'Is teacher approved' checkbox to approve after stale for {email}.")
-                        self.take_screenshot_on_failure(f"reclick_approve_checkbox_fail_{email}", "page")
-                        return False
-                elif not is_approved_desired and is_checkbox_checked:
-                    self.log.info(f"Re-clicking 'Is teacher approved' checkbox to set to 'Pending' for {email} after stale.")
-                    if not self.click_element(self._is_teacher_approved_checkbox, locatorType="xpath"):
-                        self.log.error(f"Failed to re-click 'Is teacher approved' checkbox to set pending after stale for {email}.")
-                        self.take_screenshot_on_failure(f"reclick_pending_checkbox_fail_{email}", "page")
-                        return False
-                else:
-                    self.log.info(f"'Is teacher approved' status is already as desired ({new_approval_status}) for {email} after re-check.")
-
-            except Exception as e:
-                self.log.error(f"Could not find or interact with 'Is teacher approved' checkbox for {email}: {e}")
-                self.take_screenshot_on_failure(f"find_approved_checkbox_error_{email}", "page")
-                return False
-
-            # 4. Set commission percentage if provided
-            if commission_value is not None:
-                self.log.info(f"Attempting to set commission percentage to {commission_value} for {email}.")
-                try:
-                    # Ensure input field is visible before sending keys
-                    if not self.send_keys_element(commission_value, self._commission_percentage_input, locatorType="xpath"):
-                        self.log.error(f"Failed to send commission value '{commission_value}' to input field for {email}.")
-                        self.take_screenshot_on_failure(f"send_commission_fail_{email}", "page")
-                        return False
-                    self.log.info(f"Successfully set commission to {commission_value} for {email}.")
-                except ElementNotInteractableException as e:
-                    self.log.error(f"Commission percentage input field not interactable for {email}: {e}")
-                    self.take_screenshot_on_failure(f"commission_input_not_interactable_{email}", "page")
-                    return False
-                except Exception as e:
-                    self.log.error(f"Could not interact with commission percentage input for {email} due to unexpected error: {e}")
-                    self.take_screenshot_on_failure(f"commission_input_error_{email}", "page")
-                    return False
-            else:
-                self.log.info(f"No commission value provided for {email}, skipping.")
-
-            # 5. Save changes
-            self.log.info(f"Attempting to save changes for {email}.")
-            if self.click_element(self._save_button, locatorType="xpath"):
-                self.log.info(f"Clicked save button for {email}.")
-                # Wait for page to reload or success message to appear
-                self.wait_for_page_load() 
-                if self.is_element_visible(self._successful_change_message, locatorType="xpath", timeout=5):
-                    self.log.info(f"Changes saved successfully and confirmation message visible for {email}.")
-                    return True
-                else:
-                    self.log.error(f"Success message not visible after saving changes for {email}. Check for validation errors or unexpected redirects.")
-                    self.take_screenshot_on_failure("save_success_message_missing", "page")
-                    # Optionally, check for specific error messages if needed here
-                    return False
-            else:
-                self.log.error(f"Failed to click save button for {email}.")
-                self.take_screenshot_on_failure("click_save_button_fail", "page")
-                return False
-
-        except Exception as e:
-            self.log.error(f"An error occurred while saving changes for {email}: {e}")
-            self.take_screenshot_on_failure("save_changes_error", "page")
+        # 1. Navigate to the specific user's edit page by clicking their link in the list.
+        user_link_xpath = self._USER_LINK_BY_EMAIL.format(user_email, user_email, user_email)
+        if not self.wait_for_element_and_click(user_link_xpath, "xpath"):
+            self.log.error(f"Failed to click on user link for {user_email}. Cannot proceed with status/commission change.")
+            self.take_screenshot(f"failed_click_user_link_{user_email}_{self.get_current_timestamp()}.png")
             return False
+
+        self.log.info(f"Navigated to edit page for {user_email}.")
+        self.wait_for_page_load() # Ensure the user's edit page is fully loaded
+
+        # 2. Click the 'Teacher Application Status' tab to reveal relevant fields.
+        self.log.info("Attempting to click 'Teacher Application Status' tab.")
+        if not self.wait_for_element_and_click(self._TEACHER_APPLICATION_STATUS_TAB, "xpath"):
+            self.log.error("Failed to click 'Teacher Application Status' tab.")
+            self.take_screenshot(f"failed_to_click_teacher_status_tab_{user_email}_{self.get_current_timestamp()}.png")
+            return False
+        self.log.info("Clicked 'Teacher Application Status' tab.")
+
+        # Wait for the tab content to be visible (e.g., the commission input field).
+        # This is crucial as tab content often loads dynamically.
+        if not self.is_element_visible(self._COMMISSION_PERCENTAGE_INPUT, "id", timeout=5):
+            self.log.error("Commission percentage input not visible after clicking 'Teacher Application Status' tab. This might indicate the tab content did not load correctly.")
+            self.take_screenshot(f"commission_input_not_visible_{user_email}_{self.get_current_timestamp()}.png")
+            return False
+        self.log.info("Confirmed 'Teacher Application Status' tab content (commission input) is visible.")
+
+        # 3. Set the commission percentage if a value is provided.
+        
+        if commission_value is not None:
+            self.log.info(f"Attempting to set commission for {user_email} to: {commission_value}")
+            if not self.send_keys_element(data=commission_value,locator=self._COMMISSION_PERCENTAGE_INPUT):
+                self.log.error(f"Failed to set commission percentage for {user_email}.")
+                return False
+            self.log.info(f"Successfully set commission to {commission_value}.")
+
+        # 4. Handle teacher approval or disapproval based on the specified status.
+        if new_approval_status == "Approved":
+            self.log.info(f"Attempting to click 'Approve Teacher' button for {user_email}.")
+            if not self.wait_for_element_and_click(self._APPROVE_TEACHER_BUTTON, "xpath"):
+                self.log.error(f"Failed to click 'Approve Teacher' button for {user_email}.")
+                self.take_screenshot(f"failed_click_approve_button_{user_email}_{self.get_current_timestamp()}.png")
+                return False
+            self.log.info(f"Successfully clicked 'Approve Teacher' button for {user_email}.")
+            self.wait_for_page_load() # Wait for any redirect or refresh after submission
+
+        elif new_approval_status == "Not Approved":
+            self.log.info(f"Attempting to click 'Disapprove Teacher' button for {user_email}.")
+            # This logic assumes a separate "Disapprove Teacher" button exists in your UI.
+            # If your application handles disapproval differently (e.g., toggling the approve button,
+            # or a separate status dropdown combined with a generic "Save"),
+            # this section will need to be adjusted to match your actual UI.
+            if not self.wait_for_element_and_click(self._DISAPPROVE_TEACHER_BUTTON, "xpath"):
+                self.log.error(f"Failed to click 'Disapprove Teacher' button for {user_email}.")
+                self.take_screenshot(f"failed_click_disapprove_button_{user_email}_{self.get_current_timestamp()}.png")
+                return False
+            self.log.info(f"Successfully clicked 'Disapprove Teacher' button for {user_email}.")
+            self.wait_for_page_load() # Wait for any redirect or refresh after submission
+
+        # 5. Handle a generic "Save" button if only commission was changed or if approval/disapproval buttons don't submit the form.
+        # This is a conditional step: it's only attempted if commission_value was provided AND
+        # no specific approval/disapproval button was clicked (assuming those buttons handle submission).
+        if commission_value is not None and new_approval_status is None:
+            self.log.info(f"Only commission was changed for {user_email}. Checking for generic Save button.")
+            # Use a shorter timeout as the button might not always be present or needed.
+            if self.is_element_visible(self._SAVE_BUTTON, "xpath", timeout=3):
+                self.log.info(f"Attempting to click generic Save button for {user_email}.")
+                if not self.wait_for_element_and_click(self._SAVE_BUTTON, "xpath"):
+                    self.log.error(f"Failed to click generic Save button for {user_email}.")
+                    self.take_screenshot(f"failed_click_save_button_{user_email}_{self.get_current_timestamp()}.png")
+                    return False
+                self.log.info(f"Successfully clicked generic Save button for {user_email}.")
+                self.wait_for_page_load()
+            else:
+                self.log.info("No generic 'Save' button found or needed after commission change (assuming auto-save or form submission by approval button).")
+
+        self.log.info(f"Finished attempting to update status and commission for {user_email}. Returning True.")
+        return True # If execution reaches here without returning False, all specified actions were successful

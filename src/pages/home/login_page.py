@@ -4,9 +4,9 @@ import utilities.custome_logger as cl
 import logging
 
 class LoginPage(SeleniumDriver):
-    def __init__(self, driver):
-        super().__init__(driver)
-        self.driver = driver 
+    def __init__(self, driver, base_url):
+        super().__init__(driver, base_url)
+        self.driver = driver        
 
     log = cl.CustomLogger(logging.DEBUG)
     ################
