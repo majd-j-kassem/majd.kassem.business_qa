@@ -137,7 +137,10 @@ class SeleniumDriver():
         # If all attempts fail, raise a more specific exception for the test to catch
         self.log.critical(f"Failed to click element: '{locator}' ({locatorType}) after {retry_attempts + 1} attempts.")
         self.take_screenshot_on_failure(locator, locatorType, "final_click_failure")
-        raise ElementClickInterceptedException(f"Element not clickable after multiple attempts: {locator} ({locatorType})")
+        # Do not raise here, as the click_element is called within AdminDashboardPage methods
+        # and those methods expect a True/False return. If we raise, the calling method
+        # in AdminDashboardPage might not return False correctly.
+        return False # Return False if click failed after all attempts
 
 
     def send_keys_element(self, data, locator, locatorType="id", timeout=10, pollFrequency=0.5):
@@ -152,14 +155,16 @@ class SeleniumDriver():
                 element.clear() 
                 element.send_keys(data)
                 self.log.info(f"Sent data '{data}' to element with locator: '{locator}' and type: '{locatorType}'")
+                return True # Indicate success
             else:
                 self.log.error(f"Could not send data: Element was not found or not visible "
                                f"with locator: '{locator}' and type: '{locatorType}' after {timeout} seconds.")
-                raise ElementNotInteractableException(f"Element not interactable (not visible): {locator} ({locatorType})")
+                # Do not raise here, let the calling method handle the False return
+                return False
         except Exception as e:
             self.log.error(f"An error occurred while sending keys to element '{locator}' ({locatorType}). Error: {e}")
             self.take_screenshot_on_failure(locator, locatorType, "send_keys_error")
-            raise
+            return False # Indicate failure
 
     def is_element_present(self, locator, locatorType="id", timeout=5, pollFrequency=0.5):
         """
@@ -260,14 +265,17 @@ class SeleniumDriver():
                 lambda driver: driver.execute_script("return document.readyState") == "complete"
             )
             self.log.info("Page loaded successfully.")
+            return True # Indicate success
         except TimeoutException:
             self.log.error(f"Page did not load within {timeout} seconds (document.readyState != 'complete').")
             self.take_screenshot_on_failure("page_load_timeout", "browser", "page_load_timeout") # Use a generic locator for screenshot
-            raise # Re-raise the exception to fail the test if the page doesn't load
+            # Don't re-raise immediately, allow calling method to handle
+            return False
         except Exception as e:
             self.log.error(f"An unexpected error occurred while waiting for page load: {e}")
             self.take_screenshot_on_failure("page_load_error", "browser", "page_load_error")
-            raise
+            # Don't re-raise immediately, allow calling method to handle
+            return False
 
     def get_text_of_element(self, locator, locatorType="id", timeout=10, pollFrequency=0.5) -> str:
         """

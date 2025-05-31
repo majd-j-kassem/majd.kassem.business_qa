@@ -14,7 +14,7 @@ class TestAdminDashboardFeatures:
 
     ADMIN_USERNAME = "admin"
     ADMIN_PASSWORD = "admin"
-    PENDING_TEACHER_EMAIL = "azeez" # Ensure this email exists and is in a 'pending' state for the test
+    PENDING_TEACHER_EMAIL = "mjdwwwwwassouf" # Ensure this email exists and is in a 'pending' state for the test
 
     # classSetup will now return a tuple of initialized page objects
     @pytest.fixture(scope="class", autouse=True)
