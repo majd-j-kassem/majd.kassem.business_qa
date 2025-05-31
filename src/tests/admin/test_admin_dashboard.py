@@ -14,8 +14,8 @@ class TestAdminDashboardFeatures:
 
     ADMIN_USERNAME = "admin"
     ADMIN_PASSWORD = "admin"
-    PENDING_TEACHER_EMAIL = "mjdwwwwwassouf" # Ensure this email exists and is in a 'pending' state for the test
-
+    PENDING_TEACHER_EMAIL = "teacher1" # Ensure this email exists and is in a 'pending' state for the test
+    commission_value = "42"
     # classSetup will now return a tuple of initialized page objects
     @pytest.fixture(scope="class", autouse=True)
     def classSetup(self, oneTimeSetUp, base_url_from_cli):
@@ -86,7 +86,7 @@ class TestAdminDashboardFeatures:
             # 3. Enter the user's edit page, set commission, and approve
             # Example: approve the teacher and set commission to 15.00
             assert self.admin_dashboard_page.change_user_status_and_commission(
-                self.PENDING_TEACHER_EMAIL, new_approval_status="Approved", commission_value="95.00"), \
+                self.PENDING_TEACHER_EMAIL, new_approval_status="Approved", commission_value=self.commission_value), \
                 f"Failed to approve teacher and set commission for {self.PENDING_TEACHER_EMAIL}."
 
             log.info(f"Successfully approved teacher {self.PENDING_TEACHER_EMAIL} and set commission to 15.00.")

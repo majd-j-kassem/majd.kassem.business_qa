@@ -15,7 +15,7 @@ class RegisterCoursesTests(unittest.TestCase):
     def objectSetup(self, oneTimeSetUp, base_url):
         self.login_page = LoginPage(self.driver,base_url)
         self.base_url = base_url
-        self.login_page.login("ali", "Dinamo12@")
+        self.login_page.login("test1", "Dinamo12@")
         time.sleep(3)
         self.home_page = HomePage(self.driver, self.base_url)
         self.courses_page = CoursesPage(self.driver, self.base_url)

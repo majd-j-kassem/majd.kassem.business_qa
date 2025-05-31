@@ -272,6 +272,6 @@ class CoursesPage(SeleniumDriver):
         """
         self.log.info("Verifying if enrollment failed message is present.")
         # Using the new isElementVisible which internally uses get_element and handles exceptions
-        result = self.isElementVisible(locator=self._enroll_error_message, locatorType="xpath")
+        result = self.is_element_visible(locator=self._enroll_error_message, locatorType="xpath")
         self.log.info(f"Enrollment failed message visible: {result}")
         return result
