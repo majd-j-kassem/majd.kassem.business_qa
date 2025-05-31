@@ -38,7 +38,7 @@ def browser(request):
 
 @pytest.fixture(scope="session")
 def base_url_from_cli(request):
-    """Fixture to get the --base-url option value."""
+    """Fixture to get the --baseurl option value."""
     return request.config.getoption("--baseurl")
 
 # --- NEW FIXTURE FOR CREATING PENDING TEACHER VIA API/DB ---
