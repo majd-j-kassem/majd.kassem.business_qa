@@ -1,43 +1,81 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
-from selenium.webdriver.chrome.service import Service as ChromeService # ADD THIS LINE
-# from selenium.webdriver.firefox.service import Service as FirefoxService # If you support Firefox, add this too
+from selenium.webdriver.firefox.options import Options as FirefoxOptions # Keep if you plan to support Firefox
+from selenium.webdriver.chrome.service import Service as ChromeService
+# Import webdriver_manager for automatic driver management
+from webdriver_manager.chrome import ChromeDriverManager
+# If you support Firefox
+# from webdriver_manager.firefox import GeckoDriverManager
+
+import logging
+
+log = logging.getLogger(__name__)
 
 class WebDriverFactory:
 
     def __init__(self, browser):
-        self.browser = browser
+        self.browser = browser.lower() # Normalize to lowercase for consistency
 
     def getWebDriverInstance(self, driver_options=None):
-        # ... (your existing code) ...
+        driver = None
 
-        if self.browser == "chrome" or self.browser == "chrome-headless":
-            # Ensure driver_options is not None, if not passed, initialize it
+        if self.browser in ["chrome", "chrome-headless"]:
+            # If no options are provided from conftest, create a default set
             if driver_options is None:
-                driver_options = ChromeOptions()
-                driver_options.add_argument('--no-sandbox')
-                driver_options.add_argument('--disable-dev-shm-usage')
-                driver_options.add_argument('--window-size=1920,1080')
-                # If you want to use the temp_user_data_dir here, you'd need to pass it or generate it here.
-                # For now, let's assume conftest handles it.
+                chrome_options = ChromeOptions()
+                chrome_options.add_argument('--no-sandbox')
+                chrome_options.add_argument('--disable-dev-shm-usage')
+                chrome_options.add_argument('--window-size=1920,1080')
+                # Add headless if it's explicitly chrome-headless
+                if self.browser == "chrome-headless":
+                    chrome_options.add_argument('--headless')
+                    chrome_options.add_argument('--disable-gpu') # Recommended for headless
+                driver_options = chrome_options
+                log.info("WebDriverFactory: No Chrome options provided, using default set.")
+            else:
+                log.info("WebDriverFactory: Using Chrome options provided from conftest.")
 
-            # Instantiate the ChromeService with the explicit path
-            # Common paths in selenium/standalone-chrome:
-            # /usr/bin/chromedriver or /usr/local/bin/chromedriver
-            # Let's try /usr/bin/chromedriver first as it's often the default.
-            #chrome_service = ChromeService(executable_path='/usr/bin/chromedriver') # CRITICAL CHANGE
+            # --- CRITICAL IMPROVEMENT: Use ChromeDriverManager ---
+            # This automatically downloads and manages the correct chromedriver executable.
+            try:
+                service = ChromeService(ChromeDriverManager().install())
+                driver = webdriver.Chrome(service=service, options=driver_options)
+                log.info("WebDriverFactory: ChromeDriver initialized using ChromeDriverManager.")
+            except Exception as e:
+                log.error(f"WebDriverFactory: Failed to initialize ChromeDriver with webdriver_manager: {e}")
+                # You might want to re-raise or handle this more gracefully,
+                # but conftest.py already has a skip for this.
+                raise # Re-raise to let conftest handle the skip
 
-            # Pass both the options and the service object
-            driver = webdriver.Chrome( options=driver_options) # CRITICAL CHANGE
         elif self.browser == "firefox":
-            # ... (your existing Firefox logic, potentially adding FirefoxService too)
-            # driver = webdriver.Firefox(options=driver_options) # or similar
-            pass # Keep your Firefox logic if you have it
+            # If no options are provided from conftest, create a default set
+            if driver_options is None:
+                firefox_options = FirefoxOptions()
+                # Add any default Firefox options here if needed
+                driver_options = firefox_options
+                log.info("WebDriverFactory: No Firefox options provided, using default set.")
+            else:
+                log.info("WebDriverFactory: Using Firefox options provided from conftest.")
+
+            # --- For Firefox, you'd use GeckoDriverManager ---
+            try:
+                # service = FirefoxService(GeckoDriverManager().install()) # Uncomment if supporting Firefox
+                # driver = webdriver.Firefox(service=service, options=driver_options) # Uncomment if supporting Firefox
+                # Placeholder if you haven't implemented Firefox fully:
+                log.warning("WebDriverFactory: Firefox browser selected, but driver initialization not fully implemented yet.")
+                raise NotImplementedError("Firefox WebDriver initialization is not fully implemented.")
+            except Exception as e:
+                log.error(f"WebDriverFactory: Failed to initialize FirefoxDriver with webdriver_manager: {e}")
+                raise # Re-raise to let conftest handle the skip
 
         else:
-            driver = webdriver.Chrome(options=driver_options) # Fallback, though ideally handled
+            log.error(f"WebDriverFactory: Unsupported browser type specified: {self.browser}")
+            raise ValueError(f"Unsupported browser type: {self.browser}. Please choose 'chrome', 'chrome-headless', or 'firefox'.")
 
-        driver.set_page_load_timeout(30)
-        driver.maximize_window()
+        # Common configurations for all browsers (if driver was successfully initialized)
+        if driver:
+            driver.set_page_load_timeout(30)
+            driver.maximize_window() # Note: Maximize might not work in headless
+            log.info(f"WebDriverFactory: Driver initialized with page load timeout (30s) and maximized window.")
+
         return driver

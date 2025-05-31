@@ -4,17 +4,21 @@ from selenium.webdriver.support import expected_conditions as EC
 from base.selenium_driver import SeleniumDriver
 from selenium.webdriver.support.ui import Select
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
+import utilities.custome_logger as cl
 
 class AdminDashboardPage(SeleniumDriver):
 
+    log = cl.CustomLogger(logging.DEBUG)
+    
     def __init__(self, driver, base_url):
         super().__init__(driver, base_url)
-        self.log = logging.getLogger(self.__class__.__name__)
+        
 
         # Locators
         self._dashboard_header = "//h1[normalize-space()='Dashboard' or contains(text(), 'Welcome to the Admin Dashboard')]"
         self._user_profiles_link = "//a[./p[normalize-space()='User Profiles'] and contains(@href, '/admin/accounts/profile/')]"
-        self._user_profiles_page_header = "//h1[normalize-space()='User Profiles']" # Or a similar header on the user profiles page
+        self._user_profiles_page_header = "//h1[@class='h4 m-0 pr-3 mr-3 border-right']" # Corrected based on screenshots
+
         # Locators for user list table
         # This lambda identifies the row containing the email.
         # It assumes the email is either a link (<a>) or direct text (<td>) within the row.
@@ -34,10 +38,10 @@ class AdminDashboardPage(SeleniumDriver):
         # Locators for user edit page
         # Confirm these IDs or names on your actual edit page
         self._is_teacher_approved_checkbox = "//input[@id='id_is_teacher_approved']" # Assuming this is the checkbox on the edit page
+        self._commission_percentage_input = "//input[@id='id_commission_percentage']" # **ADD THIS LOCATOR for the commission field**
         self._save_button = "//input[@type='submit' and @value='Save']"
         self._successful_change_message = "//li[contains(@class, 'success') and contains(text(), 'was changed successfully')]"
-
-
+    
     def is_on_dashboard_page(self):
         """
         Verifies if the current page is the admin dashboard.
@@ -50,12 +54,12 @@ class AdminDashboardPage(SeleniumDriver):
         Based on image_f88b9a.png, the link is 'User Profiles'.
         """
         self.log.info("Attempting to navigate to User Profiles section.")
-        
+
         if self.click_element(self._user_profiles_link, locatorType="xpath"):
             self.log.info("Clicked 'User Profiles' link.")
             self.wait_for_page_load() # Wait for the new page to load
             # Verify we are on the User Profiles list page (e.g., check for a header)
-            if self.is_element_visible("//h1[normalize-space()='Select user profile to change']", locatorType="xpath", timeout=5):
+            if self.is_element_visible(self._user_profiles_page_header, locatorType="xpath", timeout=5):
                  self.log.info("Successfully navigated to User Profiles list page.")
                  return True
             else:
@@ -74,7 +78,7 @@ class AdminDashboardPage(SeleniumDriver):
         Returns 'Approved' (True) or 'Not Approved' (False) based on alt attribute.
         """
         self.log.info(f"Getting '{status_type}' status for user: {email}")
-        
+
         if status_type == "approved":
             status_element_locator = self._is_teacher_approved_status_in_row(email)
         elif status_type == "pending":
@@ -107,38 +111,49 @@ class AdminDashboardPage(SeleniumDriver):
             self.log.error(f"An unexpected error occurred while getting user status icon: {e}")
             return None
 
-    def change_user_status_via_edit_page(self, email, new_status="Approved"): # new_status should be 'Approved' or 'Not Approved'
+    def change_user_status_and_commission(self, email, new_approval_status="Approved", commission_value=None):
         """
-        Navigates to a user's edit page and changes their 'Is teacher approved' status via a checkbox.
+        Navigates to a user's edit page, sets their 'Is teacher approved' status,
+        and optionally sets their 'Commission percentage' value.
         """
-        self.log.info(f"Attempting to change 'Is teacher approved' status for {email} to {new_status} via edit page.")
-        
+        self.log.info(f"Attempting to update status and commission for {email}.")
+
+        # 1. Click the edit link for the user
         user_edit_link = self._user_edit_link_by_email(email)
-        
         if not self.click_element(user_edit_link, locatorType="xpath"):
             self.log.error(f"Failed to click edit link for user {email}. User might not be visible or link locator is incorrect.")
             return False
 
         self.wait_for_page_load() # Wait for the edit page to load
-
         self.log.info(f"Navigated to edit page for {email}.")
-        
-        # We are targeting the 'Is teacher approved' checkbox
-        if new_status == "Approved": 
+
+        # 2. Handle 'Is teacher approved' checkbox
+        current_approval_status = self.get_element(self._is_teacher_approved_checkbox, locatorType="xpath").is_selected()
+        desired_approval_checked = (new_approval_status == "Approved")
+
+        if desired_approval_checked and not current_approval_status:
+            # Check the checkbox if it's not already checked and desired is Approved
             if not self.check_element_checkbox(self._is_teacher_approved_checkbox, "xpath"):
                 self.log.error(f"Failed to check 'Is teacher approved' checkbox for {email}.")
                 return False
             self.log.info(f"Checked 'Is teacher approved' checkbox for {email}.")
-        elif new_status == "Not Approved":
-             if not self.uncheck_element_checkbox(self._is_teacher_approved_checkbox, "xpath"):
-                 self.log.error(f"Failed to uncheck 'Is teacher approved' checkbox for {email}.")
-                 return False
-             self.log.info(f"Unchecked 'Is teacher approved' checkbox for {email}.")
+        elif not desired_approval_checked and current_approval_status:
+            # Uncheck the checkbox if it's checked and desired is Not Approved
+            if not self.uncheck_element_checkbox(self._is_teacher_approved_checkbox, "xpath"):
+                self.log.error(f"Failed to uncheck 'Is teacher approved' checkbox for {email}.")
+                return False
+            self.log.info(f"Unchecked 'Is teacher approved' checkbox for {email}.")
         else:
-            self.log.error(f"Invalid new_status for checkbox update: {new_status}. Must be 'Approved' or 'Not Approved'.")
-            return False
+            self.log.info(f"Is teacher approved checkbox already in desired state ({new_approval_status}) for {email}.")
 
-        # Save the changes
+        # 3. Set the commission value (if provided)
+        if commission_value is not None:
+            if not self.send_data(commission_value, self._commission_percentage_input, locatorType="xpath"):
+                self.log.error(f"Failed to send commission value '{commission_value}' to input field for {email}.")
+                return False
+            self.log.info(f"Set commission percentage to '{commission_value}' for {email}.")
+
+        # 4. Save the changes
         if self.click_element(self._save_button, locatorType="xpath"):
             self.log.info(f"Clicked save button for {email}.")
             self.wait_for_page_load() # Wait for the save operation to complete and page to reload
