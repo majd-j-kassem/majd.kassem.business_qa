@@ -10,16 +10,16 @@ import time
 
 @pytest.mark.usefixtures("oneTimeSetUp", "setUp")
 class TestTeacher(unittest.TestCase):
-    APPROVED_TEACHER_EMAIL = ""
-    APPROVED_TEACHER_PASSWORD = ""
+    APPROVED_TEACHER_EMAIL = "asdf"
+    APPROVED_TEACHER_PASSWORD = "Dinamo12@"
     @pytest.fixture(autouse=True)
     def objectSetup(self, oneTimeSetUp, base_url):
         self.login_page = LoginPage(self.driver, base_url)
-        #self.login_page.login("ali", "Dinamo12@")
+        #self.login_page.login(self.APPROVED_TEACHER_EMAIL, self.APPROVED_TEACHER_PASSWORD)
         self.home_page = HomePage(self.driver, self.base_url)
         
         self.join_as_teacher_page = TeacherSignPage(self.driver, self.base_url)
-        self.ts = StatusVerifier(self.driver, self.base_url)
+        self.ts = StatusVerifier(self.driver, self.base_url)    
         
     #@pytest.mark.run(order=1)
     @pytest.mark.nondestructive
@@ -71,4 +71,25 @@ class TestTeacher(unittest.TestCase):
         is_logged_in = self.login_page.verify_login_faild() # Assuming this method exists
         
         assert is_logged_in is True
+        
+    def screenShot(self, resultMessage):
+        """
+        Takes a screenshot and saves it to the 'screenshots' directory.
+        The filename will include a timestamp and the result message.
+        """
+        fileName = resultMessage.replace(" ", "_") + "." + str(int(time.time())) + ".png"
+        screenshotDirectory = "../screenshots/" # Relative path from utilities/ to screenshots/
+        relativeFileName = screenshotDirectory + fileName
+        currentDirectory = os.path.dirname(__file__) # Get the directory of the current file
+        destinationFile = os.path.join(currentDirectory, relativeFileName)
+
+        try:
+            if not os.path.exists(screenshotDirectory):
+                os.makedirs(screenshotDirectory)
+                self.log.info(f"Created screenshot directory: {screenshotDirectory}")
+            self.driver.save_screenshot(destinationFile)
+            self.log.error(f"Screenshot taken: {destinationFile}")
+        except Exception as e:
+            self.log.error(f"Failed to take screenshot: {e}")
+
         

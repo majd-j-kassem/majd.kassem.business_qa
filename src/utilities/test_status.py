@@ -11,6 +11,7 @@ import utilities.custome_logger as cl
 import logging
 from base.selenium_driver import SeleniumDriver
 from traceback import print_stack
+import os
 
 class StatusVerifier(SeleniumDriver):
 
@@ -65,3 +66,23 @@ class StatusVerifier(SeleniumDriver):
             self.log.info(testName + " ### TEST SUCCESSFUL")
             self.resultList.clear()
             assert True == True
+            
+    def screenShot(self, resultMessage):
+        """
+        Takes a screenshot and saves it to the 'screenshots' directory.
+        The filename will include a timestamp and the result message.
+        """
+        fileName = resultMessage.replace(" ", "_") + "." + str(int(time.time())) + ".png"
+        screenshotDirectory = "../screenshots/" # Relative path from utilities/ to screenshots/
+        relativeFileName = screenshotDirectory + fileName
+        currentDirectory = os.path.dirname(__file__) # Get the directory of the current file
+        destinationFile = os.path.join(currentDirectory, relativeFileName)
+
+        try:
+            if not os.path.exists(screenshotDirectory):
+                os.makedirs(screenshotDirectory)
+                self.log.info(f"Created screenshot directory: {screenshotDirectory}")
+            self.driver.save_screenshot(destinationFile)
+            self.log.error(f"Screenshot taken: {destinationFile}")
+        except Exception as e:
+            self.log.error(f"Failed to take screenshot: {e}")

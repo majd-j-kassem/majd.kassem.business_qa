@@ -4,71 +4,44 @@ import pytest
 from pages.home.login_page import LoginPage
 from pages.home.home_page import HomePage
 from pages.teachers.teacher_signup_page import TeacherSignPage
+from pages.teachers.add_course_page import CourseAddingPage
 
 import time
 
 
 @pytest.mark.usefixtures("oneTimeSetUp", "setUp")
 class TestTeacher(unittest.TestCase):
-    APPROVED_TEACHER_EMAIL = ""
-    APPROVED_TEACHER_PASSWORD = ""
+    APPROVED_TEACHER_EMAIL = "asdf"
+    APPROVED_TEACHER_PASSWORD = "Dinamo12@"
     @pytest.fixture(autouse=True)
     def objectSetup(self, oneTimeSetUp, base_url):
         self.login_page = LoginPage(self.driver, base_url)
-        #self.login_page.login("ali", "Dinamo12@")
+        self.login_page.login(self.APPROVED_TEACHER_EMAIL, self.APPROVED_TEACHER_PASSWORD)
         self.home_page = HomePage(self.driver, self.base_url)
         
-        self.join_as_teacher_page = TeacherSignPage(self.driver, self.base_url)
-        self.ts = StatusVerifier(self.driver, self.base_url)
+        self.course_page = CourseAddingPage(self.driver, base_url)
+    
         
     #@pytest.mark.run(order=1)
     @pytest.mark.nondestructive
     def test_valid_course_added(self):
         
         self.home_page.go_to_Teacher_Dashboard_page()
-        pending_teacher_email = "pending_teacher_" + str(int(time.time())) + "@kuwaitnet.email"
-        pending_teacher_password = "PendingPass123!" # A strong unique password
-
-        #self.courses.enterCourseName("JavaScript")
-        #self.courses.selectCourseToEnroll("JavaScript for beginners")
-        self.join_as_teacher_page.teacher_join(full_name_en="Kuwaitnet", full_name_ar="كويت نت", email=pending_teacher_email, 
-                                               phone_number="00965957708653", year_of_exp="12", 
-                                               university_attend="Damascus University", graduate_year="2009", 
-                                               major_study="Math", bio_teacher="We build people mind", 
-                                               password="Dinamo12@", password_2="Dinamo12@")
+        course_name = "testing_course" + str(int(time.time()))
+        course_description  = "We are adding random course for testing !" + str(int(time.time())) # A strong unique password
+        course_price = int(time.time() / 1000000)
+        course_language = "English"
+        course_level = "Advanced"
+        course_image_link = "/home/majd/Documents/Majd-Personal-Work/majd.kassem.business_qa/images/student_1.jpg"
+        course_video_link = "https://www.google.co.uk/"
         
-        result = self.join_as_teacher_page.verify_joining_succssed()
-        self.home_page.go_to_teacher_signup_page()
-        self.ts.markFinal("test_invalidEnrollment", result,
-                          "Enrollment Failed Verification")
-
-            
-    @pytest.mark.nondestructive
-    def test_teacher_login_pending(self):
-        self.home_page.go_to_teacher_signup_page()
-        pending_teacher_email = "pending_teacher_" + str(int(time.time())) + "@kuwaitnet.email"
-        pending_teacher_password = "PendingPass123!" # A strong unique password
-
         
-        # Navigate back to teacher signup page if not already there from previous test
-        time.sleep(1) # Give page time to load
-
-        self.join_as_teacher_page.teacher_join(full_name_en="Pending Teacher", full_name_ar="معلم قيد الانتظار", 
-                                               email=pending_teacher_email, 
-                                               phone_number="00965957708659", year_of_exp="5", 
-                                               university_attend="Cairo University", graduate_year="2015", 
-                                               major_study="Chemistry", bio_teacher="Eager to teach", 
-                                               password=pending_teacher_password, password_2=pending_teacher_password)
+        self.course_page.add_new_course(course_name,course_description,course_price,
+                                         course_language,course_level, course_image_link, course_video_link)
         
        
-        
-        self.home_page.go_to_home_page()# Assuming you have a method to go to the main login page
-        time.sleep(2) # Give page time to load
+        result = self.course_page.verify_adding_course_succssed()
+        assert result is True
 
-        
-        self.login_page.login(pending_teacher_email, pending_teacher_password)
-        time.sleep(3) 
-        is_logged_in = self.login_page.verify_login_faild() # Assuming this method exists
-        
-        assert is_logged_in is True
-        
+            
+    
