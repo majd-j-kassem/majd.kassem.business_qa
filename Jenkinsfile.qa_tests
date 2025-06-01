@@ -32,7 +32,7 @@ pipeline {
                     sh "mkdir -p test-results" // For JUnit XML if you decide to use it separately
 
                     // CORRECTED LINE: Used ./venv/bin/pytest and correctly quoted --baseurl
-                    sh "./venv/bin/pytest src/tests --alluredir=allure-results --junitxml=test-results/junit_report.xml --browser chrome-headless --baseurl \"${params.STAGING_URL_PARAM}\""
+                    sh "./.venv/bin/pytest src/tests --alluredir=allure-results --junitxml=test-results/junit_report.xml --browser chrome-headless --baseurl \"${params.STAGING_URL_PARAM}\""
                 }
             }
         }
