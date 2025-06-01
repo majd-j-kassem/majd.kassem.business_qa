@@ -26,7 +26,7 @@ class RegisterCoursesTests(unittest.TestCase):
 
     #@pytest.mark.run(order=1)
     @pytest.mark.nondestructive
-    def test_invalidEnrollment(self):
+    def test_validEnrollment(self):
         #self.courses.enterCourseName("JavaScript")
         #self.courses.selectCourseToEnroll("JavaScript for beginners")
         self.courses_page.enroll_course(card_num="1234", card_exp_month="1", card_exp_year="2026")
