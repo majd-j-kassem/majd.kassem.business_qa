@@ -18,7 +18,26 @@ pipeline {
             steps {
                 script {
                     echo "Checking out QA repository: ${env.QA_REPO}, branch: ${env.QA_BRANCH}"
+                    // Ensure the 'checkout scm' uses the environment variables for clarity if needed,
+                    // otherwise your existing 'checkout scm' will use the job's SCM config.
+                    // Assuming your job's SCM is already configured to use GIT_CREDENTIAL_ID and the QA_REPO/QA_BRANCH
                     checkout scm
+                }
+            }
+        }
+
+        // NEW STAGE: Setup Python Virtual Environment
+        stage('Setup Python Environment') {
+            steps {
+                script {
+                    echo "Setting up Python virtual environment and installing dependencies..."
+                    // Ensure python3 is available on your Jenkins agent.
+                    // This creates a virtual environment named '.venv' in your workspace root.
+                    sh 'python3 -m venv ./.venv'
+                    // Install dependencies from requirements.txt into the virtual environment.
+                    // --no-cache-dir is good practice in CI to avoid large caches.
+                    sh './.venv/bin/pip install --no-cache-dir -r requirements.txt'
+                    echo "Python environment setup complete."
                 }
             }
         }
@@ -28,17 +47,12 @@ pipeline {
                 script {
                     echo "Running Selenium tests against Staging URL: ${params.STAGING_URL_PARAM}"
                     // It's good practice to create the allure-results directory explicitly
-                    // even if pytest can often create it.
                     sh "mkdir -p allure-results"
                     sh "mkdir -p test-results" // For JUnit XML if you decide to use it separately
 
-                    // This is where you include the --alluredir flag
-                    // Assuming your tests are in 'src/tests' relative to the repo root.
-                    // This command will run your tests and put Allure's raw data in 'allure-results/'.
-                    // The --alluredir option takes precedence over pytest.ini if both are present.
-                    // IMPORTANT: Use -Dmaven.test.failure.ignore=true equivalent if your test runner aborts on first failure.
-                    // For pytest, it usually continues by default, but ensure the exit code doesn't stop the pipeline prematurely.
-                    sh "pytest src/tests --alluredir=allure-results --junitxml=test-results/junit_report.xml --browser chrome-headless --base-url ${params.STAGING_URL_PARAM}"
+                    // CORRECTED LINE: Used ./venv/bin/pytest and correctly quoted --baseurl
+                    // Now, ./.venv/bin/pytest should be found after the setup stage
+                    sh "./.venv/bin/pytest src/tests --alluredir=allure-results --junitxml=test-results/junit_report.xml --browser chrome-headless --baseurl \"${params.STAGING_URL_PARAM}\""
                 }
             }
         }
@@ -62,12 +76,10 @@ pipeline {
         always {
             script {
                 echo 'Publishing Allure Test Report...'
-                // This step tells Jenkins to find the raw Allure data in 'allure-results'
-                // and build the interactive HTML report.
+                // Correct Allure report publishing syntax
                 allure([
-                    reportDir: 'allure-results',
-                    // Optional: If you configured a specific Allure CLI installation in Jenkins global tools config
-                    // allureInstall: 'MyAllureCLI_2.x'
+                    reportBuildPolicy: 'ALWAYS', // Always publish the report
+                    results: [[path: 'allure-results']] // Specify where the raw results are
                 ])
 
                 echo 'Publishing JUnit XML Reports...'
@@ -83,23 +95,65 @@ pipeline {
                     currentBuild.displayName = "#${env.BUILD_NUMBER} (${totalTests} tests, ${failedTests} failed)"
                     currentBuild.description = "Total: ${totalTests} | Failed: ${failedTests} | Skipped: ${skippedTests}"
                 }
-
-                // Clean up the agent's workspace.
-                // Make sure this is *after* all publishing steps, as they need the files.
-                deleteDir()
             }
         }
         success {
-            echo 'QA Tests pipeline finished successfully.'
+            script {
+                echo 'QA Tests pipeline finished successfully. Sending email...'
+                emailext (
+                    to: 'mjdwassouf@gmail.com', // <<--- REPLACE WITH YOUR EMAIL(S)
+                    subject: "Jenkins Build ${env.JOB_NAME} - #${env.BUILD_NUMBER} - SUCCESS",
+                    body: """
+                    <p>Build Status: <b>SUCCESS</b></p>
+                    <p>Project: ${env.JOB_NAME}</p>
+                    <p>Build URL: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                    <p>Allure Report: <a href="${env.BUILD_URL}allure/">Click here to view Allure Report</a></p>
+                    <p>See attached for JUnit XML results.</p>
+                    """,
+                    mimeType: 'text/html',
+                    attachmentsPattern: 'test-results/junit_report.xml' // Attach JUnit XML report
+                )
+            }
+            deleteDir() // Clean up workspace after sending email
         }
         failure {
-            echo 'QA Tests pipeline FAILED. No deployment to live.'
-            // You might want to explicitly set the build result to FAILURE if pytest itself didn't
-            // and you want Jenkins to mark it as such even if the post-steps ran.
-            // currentBuild.result = 'FAILURE'
+            script {
+                echo 'QA Tests pipeline FAILED. No deployment to live. Sending email...'
+                emailext (
+                    to: 'mjdwassouf@gmail.com', // <<--- REPLACE WITH YOUR EMAIL(S)
+                    subject: "Jenkins Build ${env.JOB_NAME} - #${env.BUILD_NUMBER} - FAILED",
+                    body: """
+                    <p>Build Status: <b>FAILED!</b></p>
+                    <p>Project: ${env.JOB_NAME}</p>
+                    <p>Build URL: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                    <p>Please check the console output for details: <a href="${env.BUILD_URL}console">Console Output</a></p>
+                    <p>Allure Report (if generated): <a href="${env.BUILD_URL}allure/">Click here to view Allure Report</a></p>
+                    <p>See attached for JUnit XML results.</p>
+                    """,
+                    mimeType: 'text/html',
+                    attachmentsPattern: 'test-results/junit_report.xml' // Attach JUnit XML report for failure analysis
+                )
+            }
+            deleteDir() // Clean up workspace after sending email
         }
         unstable {
-            echo 'QA Tests pipeline finished with unstable results (e.g., some tests failed).'
+            script {
+                echo 'QA Tests pipeline finished with unstable results (e.g., some tests failed). Sending email...'
+                emailext (
+                    to: 'mjdwassouf@gmail.com', // <<--- REPLACE WITH YOUR EMAIL(S)
+                    subject: "Jenkins Build ${env.JOB_NAME} - #${env.BUILD_NUMBER} - UNSTABLE (Some Tests Failed)",
+                    body: """
+                    <p>Build Status: <b>UNSTABLE</b> (Some tests failed)</p>
+                    <p>Project: ${env.JOB_NAME}</p>
+                    <p>Build URL: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                    <p>Allure Report: <a href="${env.BUILD_URL}allure/">Click here to view Allure Report</a></p>
+                    <p>See attached for JUnit XML results.</p>
+                    """,
+                    mimeType: 'text/html',
+                    attachmentsPattern: 'test-results/junit_report.xml'
+                )
+            }
+            deleteDir() // Clean up workspace after sending email
         }
     }
 }

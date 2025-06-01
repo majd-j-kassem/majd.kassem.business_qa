@@ -78,10 +78,7 @@ class AdminDashboardPage(SeleniumDriver):
         return self.is_element_visible(self._dashboard_header, locatorType="xpath")
 
     def navigate_to_user_management(self):
-        """
-        Navigates to the user management section.
-        Based on image_f88b9a.png, the link is 'User Profiles'.
-        """
+     
         self.log.info("Attempting to navigate to User Profiles section.")
 
         if self.click_element(self._user_profiles_link, locatorType="xpath"):
@@ -109,7 +106,6 @@ class AdminDashboardPage(SeleniumDriver):
         self.log.info(f"Getting '{status_type}' status for user: {email}")
 
         if status_type == "approved":
-            print("Majd")
             status_element_locator = self._is_teacher_approved_status_in_row(email)
         elif status_type == "pending":
             status_element_locator = self._is_teacher_pending_status_in_row(email)

@@ -45,14 +45,14 @@ class LoginPage(SeleniumDriver):
     def verify_login_success_appearnce(self):
         # Use isElementVisible for Logout link, indicating it's truly ready
         # Give it a generous timeout for network latency on Render
-        is_logged_in = self.isElementVisible(self.logout_locator, locatorType="linktext", timeout=20)
+        is_logged_in = self.is_element_visible(self.logout_locator, locatorType="linktext", timeout=20)
         if is_logged_in:
             self.log.info("Login successful: Logout link is visible.")
         else:
             self.log.error("Login failed: Logout link is NOT visible.")
         return is_logged_in
     def verify_login_faild(self):
-        is_not_logged_in = self.isElementPresent(self.error_message_login_locator, locatorType="xpath")
+        is_not_logged_in = self.is_element_present(self.error_message_login_locator, locatorType="xpath")
         return is_not_logged_in
     def clear_fields(self):
         email_field = self.get_element(self.email_loctor, locatorType="id")

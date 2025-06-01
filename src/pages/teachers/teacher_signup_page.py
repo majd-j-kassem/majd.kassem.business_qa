@@ -9,9 +9,9 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException,
 import time 
 class TeacherSignPage(SeleniumDriver):
 
-    def __init__(self, driver):
+    def __init__(self, driver, base_url):
         # Call the parent class (SeleniumDriver) constructor first.
-        super().__init__(driver)
+        super().__init__(driver,base_url)
         # Explicitly initialize self.log here for CoursesPage.
         # This ensures self.log is always available within this class,
         # even if there are subtle issues with inheritance of instance attributes.
@@ -308,6 +308,6 @@ class TeacherSignPage(SeleniumDriver):
         """
         self.log.info("Verifying if enrollment failed message is present.")
         # Using the new isElementVisible which internally uses get_element and handles exceptions
-        result = self.isElementVisible(locator=self._success_joining_message, locatorType="xpath")
+        result = self.is_element_visible(locator=self._success_joining_message, locatorType="xpath")
         self.log.info(f"Enrollment failed message visible: {result}")
         return result

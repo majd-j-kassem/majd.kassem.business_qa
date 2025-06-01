@@ -14,3 +14,15 @@ pytest src/tests --alluredir=allure-results --browser chrome --baseurl http://12
 allure serve allure-results
 
 # ---------------------2- Reporting using Allure
+pytest src/tests/ --browser chrome
+pytest src/tests --browser chrome-headless --base-url ${RENDER_PROD_URL}
+pytest src/tests --browser chrome --baseurl http://127.0.0.1:8000/
+# ###################################################################
+
+# ########### Test Cases 
+Teacher: mjdwassouf@gmail.com check the "Admin approval and faild "
+
+
+# Stusent 
+test1 Dinamo12@
+
