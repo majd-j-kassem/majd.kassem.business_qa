@@ -28,7 +28,7 @@ log = logging.getLogger(__name__)
 
 def pytest_addoption(parser):
     parser.addoption("--browser", action="store", default="chrome", help="Type of browser: chrome or firefox")
-    parser.addoption("--baseurl", action="store", default="http://127.0.0.1:8000/", help="Base URL for testing")
+    parser.addoption("--baseurl", action="store", default="https://majd-kassem-business-dev.onrender.com/", help="Base URL for testing")
 
 # Move browser and base_url fixtures to the top and ensure they are session scoped
 @pytest.fixture(scope="session")
