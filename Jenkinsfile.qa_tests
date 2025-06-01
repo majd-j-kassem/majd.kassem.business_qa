@@ -100,7 +100,7 @@ pipeline {
             script {
                 echo 'QA Tests pipeline FAILED. No deployment to live. Sending email...'
                 emailext (
-                    to: 'mjdwassouf@gmail.com, developer-team@example.com', // <<--- REPLACE WITH YOUR EMAIL(S)
+                    to: 'mjdwassouf@gmail.com', // <<--- REPLACE WITH YOUR EMAIL(S)
                     subject: "Jenkins Build ${env.JOB_NAME} - #${env.BUILD_NUMBER} - FAILED",
                     body: """
                     <p>Build Status: <b>FAILED!</b></p>
