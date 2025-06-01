@@ -23,9 +23,9 @@ class TestTeacher(unittest.TestCase):
         
     #@pytest.mark.run(order=1)
     @pytest.mark.nondestructive
-    def test_valid_teacher_joining(self):
+    def test_valid_course_added(self):
         
-        self.home_page.go_to_teacher_signup_page()
+        self.home_page.go_to_Teacher_Dashboard_page()
         pending_teacher_email = "pending_teacher_" + str(int(time.time())) + "@kuwaitnet.email"
         pending_teacher_password = "PendingPass123!" # A strong unique password
 

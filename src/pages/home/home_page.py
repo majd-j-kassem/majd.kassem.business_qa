@@ -13,11 +13,11 @@ class HomePage(SeleniumDriver):
     _course_menu_link = "//a[normalize-space()='Courses']"
     _course_menu_link_type = "xpath" # Added explicit type for clarity
     _join_as_teacher_link = "//a[normalize-space()='Join us as a teacher']"
+    _home_page_locator = "//nav[@class='main-nav']//a[normalize-space()='Home']"
+    _teacher_dashboard_link_locator = "//a[normalize-space()='Dashboard']"
 
     def go_to_course_page(self):
-        """
-        Navigates to the Courses page by clicking the 'Courses' link in the menu.
-        """
+        
         self.log.info("Attempting to navigate to Courses page.")
         try:
             # Re-locate the element just before clicking to avoid StaleElementReferenceException
@@ -28,14 +28,31 @@ class HomePage(SeleniumDriver):
             raise # Re-raise the exception to fail the test if navigation fails
 
     def go_to_teacher_signup_page(self):
-        """
-        Navigates to the Teacher Join flow page by clicking the 'Join us as a teacher' link in the Footer.
-        """
-        self.log.info("Attempting to navigate to Join as a Teacher page.")
+       
         try:
-            # Re-locate the element just before clicking to avoid StaleElementReferenceException
             self.click_element(locator=self._join_as_teacher_link, locatorType="xpath")
             self.log.info("Successfully navigated to Join As a Teacher page.")
         except Exception as e:
             self.log.error(f"Failed to navigate to Teacher page. Error: {e}")
             raise # Re-raise the exception to fail the test if navigation fails
+    def go_to_home_page(self):
+       
+        self.log.info("Attempting to navigate to Join as a Teacher page.")
+        try:
+            # Re-locate the element just before clicking to avoid StaleElementReferenceException
+            self.click_element(locator=self._home_page_locator, locatorType="xpath")
+            self.log.info("Successfully navigated to Join As a Teacher page.")
+        except Exception as e:
+            self.log.error(f"Failed to navigate to Teacher page. Error: {e}")
+            raise # Re-raise the exception to fail the test if navigation fails
+
+    def go_to_Teacher_Dashboard_page(self):
+    
+        try:
+            # Re-locate the element just before clicking to avoid StaleElementReferenceException
+            self.click_element(locator=self._teacher_dashboard_link_locator, locatorType="xpath")
+            self.log.info("Successfully navigated to Join As a Teacher page.")
+        except Exception as e:
+            self.log.error(f"Failed to navigate to Teacher page. Error: {e}")
+            raise # Re-raise the exception to fail the test if navigation fails
+
