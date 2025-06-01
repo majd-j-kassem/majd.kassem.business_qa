@@ -33,7 +33,7 @@ pipeline {
                     sh "mkdir -p test-results" // For JUnit XML if you decide to use it separately
 
     
-                    sh "pytest src/tests --alluredir=allure-results --junitxml=test-results/junit_report.xml --browser chrome-headless --baseurl ${params.STAGING_URL_PARAM}"
+                    sh "./venv/bin/pytest src/tests --alluredir=allure-results --junitxml=test-results/junit_report.xml --browser chrome-headless --baseurl \"${params.STAGING_URL_PARAM}\""
                 }
             }
         }
@@ -60,9 +60,8 @@ pipeline {
                 // This step tells Jenkins to find the raw Allure data in 'allure-results'
                 // and build the interactive HTML report.
                 allure([
-                    reportDir: 'allure-results',
-                    // Optional: If you configured a specific Allure CLI installation in Jenkins global tools config
-                    allureInstall: 'allure_latest'
+                    reportBuildPolicy: 'ALWAYS', // Always publish the report
+                    results: [[path: 'allure-results']] // Specify where the raw results are
                 ])
 
                 echo 'Publishing JUnit XML Reports...'
