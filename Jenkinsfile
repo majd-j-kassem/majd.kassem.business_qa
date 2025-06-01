@@ -16,7 +16,7 @@ pipeline {
 
                         # Run your tests using the virtual environment's python
                         # IMPORTANT: Generate a JUnit XML report for Jenkins
-                        sh "pytest src/tests --alluredir=allure-results --junitxml=test-results/junit_report.xml --browser chrome-headless --base-url ${params.STAGING_URL_PARAM}"
+                        pytest src/tests --alluredir=allure-results --junitxml=test-results/junit_report.xml --browser chrome-headless --baseurl ${params.STAGING_URL_PARAM}"
                     """
                 }
             }
