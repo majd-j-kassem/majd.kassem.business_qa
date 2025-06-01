@@ -62,7 +62,7 @@ pipeline {
                 allure([
                     reportDir: 'allure-results',
                     // Optional: If you configured a specific Allure CLI installation in Jenkins global tools config
-                    // allureInstall: 'MyAllureCLI_2.x'
+                    allureInstall: 'allure_latest'
                 ])
 
                 echo 'Publishing JUnit XML Reports...'
