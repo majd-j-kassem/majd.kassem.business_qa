@@ -18,7 +18,26 @@ pipeline {
             steps {
                 script {
                     echo "Checking out QA repository: ${env.QA_REPO}, branch: ${env.QA_BRANCH}"
+                    // Ensure the 'checkout scm' uses the environment variables for clarity if needed,
+                    // otherwise your existing 'checkout scm' will use the job's SCM config.
+                    // Assuming your job's SCM is already configured to use GIT_CREDENTIAL_ID and the QA_REPO/QA_BRANCH
                     checkout scm
+                }
+            }
+        }
+
+        // NEW STAGE: Setup Python Virtual Environment
+        stage('Setup Python Environment') {
+            steps {
+                script {
+                    echo "Setting up Python virtual environment and installing dependencies..."
+                    // Ensure python3 is available on your Jenkins agent.
+                    // This creates a virtual environment named '.venv' in your workspace root.
+                    sh 'python3 -m venv ./.venv'
+                    // Install dependencies from requirements.txt into the virtual environment.
+                    // --no-cache-dir is good practice in CI to avoid large caches.
+                    sh './.venv/bin/pip install --no-cache-dir -r requirements.txt'
+                    echo "Python environment setup complete."
                 }
             }
         }
@@ -32,6 +51,7 @@ pipeline {
                     sh "mkdir -p test-results" // For JUnit XML if you decide to use it separately
 
                     // CORRECTED LINE: Used ./venv/bin/pytest and correctly quoted --baseurl
+                    // Now, ./.venv/bin/pytest should be found after the setup stage
                     sh "./.venv/bin/pytest src/tests --alluredir=allure-results --junitxml=test-results/junit_report.xml --browser chrome-headless --baseurl \"${params.STAGING_URL_PARAM}\""
                 }
             }
