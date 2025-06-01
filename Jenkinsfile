@@ -16,8 +16,17 @@ pipeline {
 
                         # Run your tests using the virtual environment's python
                         # IMPORTANT: Generate a JUnit XML report for Jenkins
-                        python3 -m pytest --junitxml=test-results.xml src/tests/ --browser chrome-headless
+                        sh "pytest src/tests --alluredir=allure-results --junitxml=test-results/junit_report.xml --browser chrome-headless --base-url ${params.STAGING_URL_PARAM}"
                     """
+                }
+            }
+        }
+         stage('Generate Allure Report') {
+            steps {
+                script {
+                    // Assuming Allure Commandline tool is installed on your Jenkins agent
+                    // If not, you might need a 'tool' directive or download it
+                    sh "allure generate allure-results --clean -o allure-report"
                 }
             }
         }
