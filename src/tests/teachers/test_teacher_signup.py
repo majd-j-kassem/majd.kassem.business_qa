@@ -4,14 +4,13 @@ import pytest
 from pages.home.login_page import LoginPage
 from pages.home.home_page import HomePage
 from pages.teachers.teacher_signup_page import TeacherSignPage
-
+import os
 import time
 
 
 @pytest.mark.usefixtures("oneTimeSetUp", "setUp")
 class TestTeacher(unittest.TestCase):
-    APPROVED_TEACHER_EMAIL = "asdf"
-    APPROVED_TEACHER_PASSWORD = "Dinamo12@"
+    
     @pytest.fixture(autouse=True)
     def objectSetup(self, oneTimeSetUp, base_url):
         self.login_page = LoginPage(self.driver, base_url)
@@ -28,8 +27,6 @@ class TestTeacher(unittest.TestCase):
         pending_teacher_email = "pending_teacher_" + str(int(time.time())) + "@kuwaitnet.email"
         pending_teacher_password = "PendingPass123!" # A strong unique password
 
-        #self.courses.enterCourseName("JavaScript")
-        #self.courses.selectCourseToEnroll("JavaScript for beginners")
         self.join_as_teacher_page.teacher_join(full_name_en="Kuwaitnet", full_name_ar="كويت نت", email=pending_teacher_email, 
                                                phone_number="00965957708653", year_of_exp="12", 
                                                university_attend="Damascus University", graduate_year="2009", 
@@ -49,7 +46,6 @@ class TestTeacher(unittest.TestCase):
         pending_teacher_password = "PendingPass123!" # A strong unique password
 
         
-        # Navigate back to teacher signup page if not already there from previous test
         time.sleep(1) # Give page time to load
 
         self.join_as_teacher_page.teacher_join(full_name_en="Pending Teacher", full_name_ar="معلم قيد الانتظار", 

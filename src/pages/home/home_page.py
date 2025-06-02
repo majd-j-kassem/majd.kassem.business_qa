@@ -10,12 +10,14 @@ class HomePage(SeleniumDriver):
         self.log = cl.CustomLogger(logging.DEBUG) # Initialize logger for this page object
 
     # Locators for elements on the Home Page
-    _course_menu_link = "//a[normalize-space()='Courses']"
-    _course_menu_link_type = "xpath" # Added explicit type for clarity
-    _join_as_teacher_link = "//a[normalize-space()='Join us as a teacher']"
-    _home_page_locator = "//nav[@class='main-nav']//a[normalize-space()='Home']"
-    _teacher_dashboard_link_locator = "//a[normalize-space()='Dashboard']"
-    _course_card_by_name = "//h5[contains(text(),'{course_name}')]/ancestor::div[contains(@class, 'course-card')]"
+        self._course_menu_link = "//a[normalize-space()='Courses']"
+        self._course_menu_link_type = "xpath" # Added explicit type for clarity
+        self._join_as_teacher_link = "//a[normalize-space()='Join us as a teacher']"
+        self._home_page_locator = "//nav[@class='main-nav']//a[normalize-space()='Home']"
+        self._teacher_dashboard_link_locator = "//a[normalize-space()='Dashboard']"
+        self._course_card_by_name = "//h5[contains(text(),'{course_name}')]/ancestor::div[contains(@class, 'course-card')]"
+
+        
     def go_to_course_page(self):
         
         self.log.info("Attempting to navigate to Courses page.")
@@ -65,4 +67,4 @@ class HomePage(SeleniumDriver):
         is_logged_in = self.is_element_visible(course_locator, locatorType="xpath", timeout=20)
         return is_logged_in
 
-        
+    

@@ -29,35 +29,28 @@ class CoursesPage(SeleniumDriver):
     # For a search box, you'll need its actual locator.
     # _search_box = (By.ID, "search_input_id") # Example: (By.ID, "id_of_search_box") or (By.XPATH, "//input[@name='q']")
     
-    _course_name_template = "//h2[contains(text(),'{course_name}')]" # Template for dynamic course names
+        self._course_name_template = "//h2[contains(text(),'{course_name}')]" # Template for dynamic course names
 
     # --- CORRECTED LOCATOR for 'View Details' button ---
     # Based on the HTML, the button text is 'View Details' and it has class 'course-action'.
     # Using CSS Selector for robustness, or XPath with correct text.
-    _view_course_details_button = "a.course-action"
-    _view_course_details_button_type = "css" # Corresponds to By.CSS_SELECTOR in SeleniumDriver's _get_by_type
-    # If you prefer XPath:
-    # _view_course_details_button = "//a[normalize-space()='View Details']"
-    # _view_course_details_button_type = "xpath"
-    # If you prefer Link Text (and it's unique):
-    # _view_course_details_button = "View Details"
-    # _view_course_details_button_type = "linktext"
-    # --- END CORRECTED LOCATOR ---
+        self._view_course_details_button = "a.course-action"
+        self._view_course_details_button_type = "css" # Corresponds to By.CSS_SELECTOR in SeleniumDriver's _get_by_type
+   
 
-    _register_button = "//button[normalize-space()='Register for Course']"
-    _card_number_input = "//input[@id='id_card_number']" # Assuming this is the correct ID
-    _card_expiry_month_selector = "//select[@id='id_expiry_month']" # Assuming this is the correct ID
-    _card_expiry_year_selector = "//select[@id='id_expiry_year']" # Assuming this is the correct ID
-    _pay_button = "//button[normalize-space()='Pay Now']"
-    _enroll_error_message = "//div[@role='alert']" # Common locator for alert messages
-    _all_courses_cards = "//div[@class='course-card']" # Changed name for clarity
-    
+        self._register_button = "//button[normalize-space()='Register for Course']"
+        self._card_number_input = "//input[@id='id_card_number']" # Assuming this is the correct ID
+        self._card_expiry_month_selector = "//select[@id='id_expiry_month']" # Assuming this is the correct ID
+        self._card_expiry_year_selector = "//select[@id='id_expiry_year']" # Assuming this is the correct ID
+        self._pay_button = "//button[normalize-space()='Pay Now']"
+        self._enroll_error_message = "//div[@role='alert']" # Common locator for alert messages
+        self._all_courses_cards = "//div[@class='course-card']" # Changed name for clarity
     # Locator for the welcome pop-up's close button, based on your screenshot inspection
     # This is an HTML element, not a browser-native alert.
     # You MUST verify these locators by inspecting the "Welcome back" popup.
-    _welcome_popup_container = (By.CSS_SELECTOR, "div.alert.alert-success") # Common, but verify
-    _welcome_popup_close_button = (By.CSS_SELECTOR, "div.alert.alert-success button.close") # Common, but verify
-    _welcome_popup_close_button_type = "css" # Added explicit type for clarity and consistency
+        self._welcome_popup_container = (By.CSS_SELECTOR, "div.alert.alert-success") # Common, but verify
+        self._welcome_popup_close_button = (By.CSS_SELECTOR, "div.alert.alert-success button.close") # Common, but verify
+        self._welcome_popup_close_button_type = "css" # Added explicit type for clarity and consistency
 
     ############################
     ### Element Interactions ###

@@ -9,10 +9,11 @@ import pytest
 class TestLogin(unittest.TestCase):
     
     @pytest.fixture(autouse=True)
-    def classSetup(self, oneTimeSetUp, base_url):
+    def classSetup(self, oneTimeSetUp, base_url_from_cli):
+        self.base_url = base_url_from_cli
         self.driver = oneTimeSetUp
-        self.login_page = LoginPage(self.driver,base_url)
-        self.base_url = base_url 
+        self.login_page = LoginPage(self.driver, self.base_url)
+        self.base_url = self.base_url 
     
     
     @pytest.mark.run(order = 2)

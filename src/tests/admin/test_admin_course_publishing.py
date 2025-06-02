@@ -38,7 +38,7 @@ class TestAdminCoursePublishing(unittest.TestCase):
         self.home_page.go_to_Teacher_Dashboard_page()
         course_name = "testing_course" + str(int(time.time()))
         course_description  = "We are adding random course for testing !" + str(int(time.time())) # A strong unique password
-        course_price = int(time.time() / 1000000)
+        course_price = int(time.time())
         course_language = "English"
         course_level = "Advanced"
         course_image_link = "/home/majd/Documents/myproject/majd.kassem.business_qa/images/course.jpg"

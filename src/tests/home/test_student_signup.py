@@ -1,24 +1,24 @@
-from pages.courses.courses_page import CoursesPage
-from utilities.test_status import StatusVerifier
-import unittest
-import pytest
+from selenium import webdriver
+from selenium.webdriver.common.by import By
 from pages.home.login_page import LoginPage
-from pages.home.home_page import HomePage
 from pages.home.signup_student_page import SignupPage
+from pages.home.home_page import HomePage
+import unittest
 import time
-
+import pytest
 
 @pytest.mark.usefixtures("oneTimeSetUp", "setUp")
-class RegisterCoursesTests(unittest.TestCase):
+class TestLogin(unittest.TestCase):
+    
     @pytest.fixture(autouse=True)
-    def objectSetup(self, oneTimeSetUp, base_url_from_cli):
-        self.base_url = base_url_from_cli
+    def classSetup(self, oneTimeSetUp, base_url_from_cli):
 
-        self.signup_student_page = SignupPage(self.driver, self.base_url)
-        self.login_page = LoginPage(self.driver,self.base_url)
-        self.home_page = HomePage(self.driver, self.base_url)
-        self.courses_page = CoursesPage(self.driver, self.base_url)
+        self.base_url = base_url_from_cli
+        self.driver = oneTimeSetUp
+
+        self.login_page = LoginPage(self.driver, self.base_url)
         self.student_signup_page = SignupPage(self.driver, self.base_url)
+        self.home_page = HomePage(self.driver, self.base_url)
 
         self.username = "test_user" + str(int(time.time()))
         self.email= "test_user_email" + str(int(time.time())) + "@kuwaitnet.email"
@@ -29,6 +29,12 @@ class RegisterCoursesTests(unittest.TestCase):
         self.user_profile = "/home/majd/Documents/myproject/majd.kassem.business_qa/images/user.jpg"
         self.user_bio = "test_user_bio" +  str(int(time.time()))
 
+        self.home_page.go_to_home_page()
+        
+
+    
+    @pytest.mark.run(order = 1)
+    def test_valid_student_signup(self):
         self.student_signup_page.signup_student(self.username, self.email, self.full_ar_name,
                                                 self.full_en_name, self.user_password,
                                                 self.user_password_2, self.user_profile,
@@ -36,17 +42,6 @@ class RegisterCoursesTests(unittest.TestCase):
         
         self.home_page.go_to_home_page()
         self.login_page.login(self.username, self.user_password)
+        result = self.login_page.verify_login_success()
+        assert result is True
         
-        
-        self.home_page.go_to_course_page()
-        self.ts = StatusVerifier(self.driver, self.base_url)
-        
-        
-
-    #@pytest.mark.run(order=1)
-    @pytest.mark.nondestructive
-    def test_validEnrollment(self):
-        self.courses_page.enroll_course(card_num="12345", card_exp_month="1", card_exp_year="2026")
-        result = self.courses_page.verifyEnrollFailed()
-        self.ts.markFinal("test_invalidEnrollment", result,
-                          "Enrollment Failed Verification")

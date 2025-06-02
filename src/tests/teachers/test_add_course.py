@@ -14,12 +14,13 @@ class TestTeacher(unittest.TestCase):
     APPROVED_TEACHER_EMAIL = "asdfs"
     APPROVED_TEACHER_PASSWORD = "Dinamo12@"
     @pytest.fixture(autouse=True)
-    def objectSetup(self, oneTimeSetUp, base_url):
-        self.login_page = LoginPage(self.driver, base_url)
+    def objectSetup(self, oneTimeSetUp, base_url_from_cli):
+        self.base_url = base_url_from_cli
+        self.login_page = LoginPage(self.driver, self.base_url)
         self.login_page.login(self.APPROVED_TEACHER_EMAIL, self.APPROVED_TEACHER_PASSWORD)
         self.home_page = HomePage(self.driver, self.base_url)
         
-        self.course_page = CourseAddingPage(self.driver, base_url)
+        self.course_page = CourseAddingPage(self.driver, self.base_url)
     
         
     @pytest.mark.run(order=1)
@@ -28,7 +29,7 @@ class TestTeacher(unittest.TestCase):
         self.home_page.go_to_Teacher_Dashboard_page()
         course_name = "testing_course" + str(int(time.time()))
         course_description  = "We are adding random course for testing !" + str(int(time.time())) # A strong unique password
-        course_price = int(time.time() / 1000000)
+        course_price = int(time.time() )
         course_language = "English"
         course_level = "Advanced"
         course_image_link = "/home/majd/Documents/Majd-Personal-Work/majd.kassem.business_qa/images/student_1.jpg"

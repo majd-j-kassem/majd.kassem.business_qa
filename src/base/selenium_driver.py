@@ -19,9 +19,7 @@ class SeleniumDriver():
         self.log = cl.CustomLogger(logging.DEBUG)
 
     def _get_by_type(self, locatorType):
-        """
-        Translates a string locator type into a Selenium By object.
-        """
+
         locatorType = locatorType.lower()
         if locatorType == "id":
             return By.ID
@@ -42,11 +40,7 @@ class SeleniumDriver():
             return False
 
     def get_element(self, locator, locatorType="id", timeout=10, pollFrequency=0.5, condition=EC.presence_of_element_located) -> WebElement:
-        """
-        Waits for an element based on a specified expected_condition and returns it.
-        Default condition: EC.presence_of_element_located (element in DOM).
-        Includes error logging and screenshot on failure.
-        """
+       
         element = None
         try:
             byType = self._get_by_type(locatorType)
@@ -76,10 +70,7 @@ class SeleniumDriver():
         return element
 
     def take_screenshot_on_failure(self, locator, locatorType, event_type="failure"):
-        """
-        Helper method to take a screenshot when an element interaction fails.
-        `event_type` helps categorize the screenshot (e.g., "timeout", "retry_intercepted").
-        """
+        
         try:
             screenshot_dir = "screenshots"
             if not os.path.exists(screenshot_dir):
@@ -95,10 +86,7 @@ class SeleniumDriver():
             self.log.error(f"Failed to take screenshot: {screenshot_e}")
 
     def click_element(self, locator, locatorType="id", timeout=10, pollFrequency=0.5, retry_attempts=2):
-        """
-        Clicks on an element after waiting for it to be clickable.
-        Includes robust error handling, scrolling, and a retry mechanism for flakiness.
-        """
+        
         attempts = 0
         while attempts <= retry_attempts:
             try:
@@ -167,9 +155,7 @@ class SeleniumDriver():
             return False # Indicate failure
 
     def is_element_present(self, locator, locatorType="id", timeout=5, pollFrequency=0.5):
-        """
-        Checks if an element is present in the DOM (not necessarily visible) within a timeout.
-        """
+        
         element = self.get_element(locator, locatorType, timeout=timeout,
                                    pollFrequency=pollFrequency, condition=EC.presence_of_element_located)
         if element is not None:
@@ -180,9 +166,7 @@ class SeleniumDriver():
             return False
 
     def is_element_visible(self, locator, locatorType="id", timeout=10, pollFrequency=0.5):
-        """
-        Checks if an element is present in the DOM AND visible within a timeout.
-        """
+       
         element = self.get_element(locator, locatorType, timeout=timeout,
                                    pollFrequency=pollFrequency, condition=EC.visibility_of_element_located)
         if element is not None:

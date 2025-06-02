@@ -28,7 +28,7 @@ log = logging.getLogger(__name__)
 
 def pytest_addoption(parser):
     parser.addoption("--browser", action="store", default="chrome", help="Type of browser: chrome or firefox")
-    parser.addoption("--baseurl", action="store", default="https://majd-kassem-business-dev.onrender.com/", help="Base URL for testing")
+    parser.addoption("--baseurl", action="store", default="http://127.0.0.1:8000/", help="Base URL for testing")
 
 # Move browser and base_url fixtures to the top and ensure they are session scoped
 @pytest.fixture(scope="session")
@@ -41,16 +41,12 @@ def base_url_from_cli(request):
     """Fixture to get the --baseurl option value."""
     return request.config.getoption("--baseurl")
 
-# --- NEW FIXTURE FOR CREATING PENDING TEACHER VIA API/DB ---
-# This fixture has function scope because we want a new pending teacher for each test that uses it.
-
 @pytest.fixture(scope="class")
 def oneTimeSetUp(request, browser, base_url_from_cli): # Now these are correctly passed as arguments
     log.info(f"Running one time setUp for browser: {browser}")
     driver_options = None
     temp_user_data_dir = None
-    driver = None # Initialize driver to None
-
+    driver = None 
     try:
         if browser == "chrome" or browser == "chrome-headless":
             chrome_options = Options()
@@ -59,44 +55,29 @@ def oneTimeSetUp(request, browser, base_url_from_cli): # Now these are correctly
             driver_options.add_argument('--disable-dev-shm-usage')
             driver_options.add_argument('--window-size=1920,1080')
 
-            # Ensure a unique temporary user data directory is created
-            #temp_user_data_dir = tempfile.mkdtemp(prefix='chrome_user_data_')
-            #driver_options.add_argument(f"--user-data-dir={temp_user_data_dir}")
-            #log.info(f"Using temporary user data directory: {temp_user_data_dir}")
-
             if browser == "chrome-headless":
                 driver_options.add_argument('--headless')
                 driver_options.add_argument('--disable-gpu')
                 log.info("Configuring Chrome for headless mode.")
             else:
                 log.info("Configuring Chrome for visible mode (local).")
-
             log.info(f"Final Chrome Options: {driver_options.arguments}")
 
         elif browser == "firefox":
-            # Add Firefox specific options here if needed
             log.info("Configuring Firefox browser.")
-            # Example:
-            # firefox_options = webdriver.FirefoxOptions()
-            # driver_options = firefox_options
-            pass # Keep pass if no specific options are needed
+            pass 
 
-        # --- CRITICAL CHANGE HERE ---
         wdf = WebDriverFactory(browser)
         try:
-            # Pass driver_options to the factory method
             driver = wdf.getWebDriverInstance(driver_options=driver_options)
             log.info("WebDriver instance obtained successfully.")
         except Exception as e:
-            # Catch common WebDriver-related exceptions and skip tests explicitly
             log.error(f"Failed to get WebDriver instance: {e}")
             pytest.skip(f"Could not initialize WebDriver for browser '{browser}': {e}. Please check driver compatibility and installation.")
-            # Do not return here if you want the 'finally' block to attempt cleanup of temp_user_data_dir
 
         driver.implicitly_wait(10) # Good practice for initial element loading
         driver.get(base_url_from_cli)
         log.info(f"Navigated to Base URL: {base_url_from_cli}")
-
 
         if request.cls:
             request.cls.driver = driver

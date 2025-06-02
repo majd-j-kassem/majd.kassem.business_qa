@@ -46,7 +46,7 @@ class LoginPage(SeleniumDriver):
        
     
     def verify_login_success(self):
-        is_logged_in = self.isElementPresent(self.logout_link_locator, locatorType="xpath")
+        is_logged_in = self.is_element_present(self.logout_link_locator, locatorType="xpath")
         return is_logged_in
     def verify_login_success_appearnce(self):
         # Use isElementVisible for Logout link, indicating it's truly ready
