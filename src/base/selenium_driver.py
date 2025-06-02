@@ -16,6 +16,7 @@ class SeleniumDriver():
 
     def __init__(self, driver, base_url):
         self.driver = driver
+        self.base_url = base_url
         self.log = cl.CustomLogger(logging.DEBUG)
 
     def _get_by_type(self, locatorType):
@@ -94,7 +95,7 @@ class SeleniumDriver():
         except Exception as screenshot_e:
             self.log.error(f"Failed to take screenshot: {screenshot_e}")
 
-    def click_element(self, locator, locatorType="id", timeout=10, pollFrequency=0.5, retry_attempts=2):
+    def click_element(self, locator, locatorType="id", timeout=3, pollFrequency=0.5, retry_attempts=2):
         """
         Clicks on an element after waiting for it to be clickable.
         Includes robust error handling, scrolling, and a retry mechanism for flakiness.

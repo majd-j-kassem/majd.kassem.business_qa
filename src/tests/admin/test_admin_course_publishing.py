@@ -41,7 +41,7 @@ class TestAdminCoursePublishing(unittest.TestCase):
         course_price = int(time.time() / 1000000)
         course_language = "English"
         course_level = "Advanced"
-        course_image_link = "/home/majd/Documents/myproject/majd.kassem.business_qa/images/course.jpg"
+        course_image_link = "/home/majd/Documents/Majd-Personal-Work/majd.kassem.business_qa/images/student_1.jpg"
         course_video_link = "https://www.google.co.uk/"
         
         
@@ -57,10 +57,10 @@ class TestAdminCoursePublishing(unittest.TestCase):
 
         admin_login_success = self.admin_login_page.admin_login(self.ADMIN_USERNAME, self.ADMIN_PASSWORD)
         result_navigate = self.admin_dashboard_page.navigate_to_teacher_courses_page()
-        initial_status = self.admin_dashboard_page.get_course_published_status(self.course_name_to_publish)
+        initial_status = self.admin_dashboard_page.get_course_published_status(course_name)
         print(f"Navigating to Admin Login Page: {initial_status}")
 
-        result_select_checkbox = self.admin_dashboard_page.select_course_checkbox(self.course_name_to_publish)
+        result_select_checkbox = self.admin_dashboard_page.select_course_checkbox(course_name)
         result_select_action = self.admin_dashboard_page.select_action_from_dropdown("Mark selected as Published (Available to Customers)")
         result_click_go = self.admin_dashboard_page.click_go_button()
         
@@ -70,18 +70,24 @@ class TestAdminCoursePublishing(unittest.TestCase):
         time.sleep(3) 
 
         # 7. Verify the course is now "published = true" in the admin panel (green icon/text)
-        final_admin_status = self.admin_dashboard_page.get_course_published_status(self.course_name_to_publish)
+        final_admin_status = self.admin_dashboard_page.get_course_published_status(course_name)
         print(f"final_admin_status: {final_admin_status}")
+        self.admin_login_page.logout()
 
         # 8. Admin logout is handled by methodSetUp tearDown.
 
         # 9. Verify on Homepage (public view)
-        self.home_page.go_to_home_page()
+        time.sleep(2) 
+        self.login_page = LoginPage(self.driver, self.base_url)
+        
+        self.login_page.login(self.ADMIN_USERNAME, self.ADMIN_PASSWORD)
+        time.sleep(2) 
+        self.home_page.go_to_course_page()
         
         # Verify course presence on homepage
         # Give the homepage a moment to load and render updated course list
-        time.sleep(2) 
-        course_visible_on_homepage = self.home_page.is_course_visible_on_homepage(self.course_name_to_publish)
+        
+        course_visible_on_homepage = self.home_page.is_course_visible_on_homepage(course_name)
         assert course_visible_on_homepage is True
 
        

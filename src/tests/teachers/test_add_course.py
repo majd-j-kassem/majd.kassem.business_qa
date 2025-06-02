@@ -14,12 +14,13 @@ class TestTeacher(unittest.TestCase):
     APPROVED_TEACHER_EMAIL = "asdfs"
     APPROVED_TEACHER_PASSWORD = "Dinamo12@"
     @pytest.fixture(autouse=True)
-    def objectSetup(self, oneTimeSetUp, base_url):
-        self.login_page = LoginPage(self.driver, base_url)
+    def objectSetup(self, oneTimeSetUp, base_url_from_cli):
+        self.base_url = base_url_from_cli
+        self.login_page = LoginPage(self.driver, self.base_url)
         self.login_page.login(self.APPROVED_TEACHER_EMAIL, self.APPROVED_TEACHER_PASSWORD)
         self.home_page = HomePage(self.driver, self.base_url)
         
-        self.course_page = CourseAddingPage(self.driver, base_url)
+        self.course_page = CourseAddingPage(self.driver, self.base_url)
     
         
     @pytest.mark.run(order=1)
