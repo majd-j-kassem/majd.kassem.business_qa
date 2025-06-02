@@ -36,7 +36,7 @@ class LoginPage(SeleniumDriver):
         
     def login(self, username="", password=""):
         self.click_login_link()
-        #self.clear_fields()
+        self.clear_fields()
         self.enter_username(username)
         self.enter_password(password)
         self.click_login_button()

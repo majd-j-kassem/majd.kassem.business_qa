@@ -44,7 +44,6 @@ class AdminDashboardPage(SeleniumDriver):
         self._APPROVE_TEACHER_BUTTON = "//button[normalize-space()='Approve Teacher' and @name='_approve_teacher']"
         teacher_courses_link = "//a[@class='nav-link active']"
         self._course_published_status_icon = lambda course_name: f"//td[normalize-space()='{course_name}']/following-sibling::td/img[contains(@alt, 'Published:')]"
-
     ########### For Course Publish ################
     
          # --- NEW LOCATORS FOR COURSE MANAGEMENT ---
@@ -252,7 +251,7 @@ class AdminDashboardPage(SeleniumDriver):
         self.log.info("Navigating to Teacher Courses page.")
         try:
             self.element_click(self._teacher_courses_link, "xpath")
-            self.wait_for_page_load() # Assuming you have a general page load wait
+            #self.wait_for_page_load() # Assuming you have a general page load wait
             # Optionally, add a check for a header specific to the teacher courses page
             return True
         except Exception as e:
@@ -269,7 +268,7 @@ class AdminDashboardPage(SeleniumDriver):
         self.log.info(f"Getting published status for course: {course_name}")
         locator = self._course_published_status_icon(course_name)
         try:
-            element = self.wait_for_element(locator, "xpath", timeout=5)
+            element = self._wait_for_element(locator, "xpath", timeout=5)
             status_alt = element.get_attribute("alt")
             if "Published: True" in status_alt or "True" == status_alt:
                 return "True"

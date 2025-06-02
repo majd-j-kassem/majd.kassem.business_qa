@@ -11,7 +11,7 @@ import time
 
 @pytest.mark.usefixtures("oneTimeSetUp", "setUp")
 class TestTeacher(unittest.TestCase):
-    APPROVED_TEACHER_EMAIL = "asdf"
+    APPROVED_TEACHER_EMAIL = "asdfs"
     APPROVED_TEACHER_PASSWORD = "Dinamo12@"
     @pytest.fixture(autouse=True)
     def objectSetup(self, oneTimeSetUp, base_url):

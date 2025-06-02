@@ -15,7 +15,7 @@ class AdminLoginPage(SeleniumDriver):
 
         # Locators
         # Now self.base_url should definitely be available
-        self._admin_login_url = f"{self.base_url}admin/"
+        self._admin_login_url = f"{self.base_url}/admin/"
         self._username_input = "//input[@placeholder='Username']"
         self._password_input = "//input[@placeholder='Password']"
         self._login_button = "//button[normalize-space()='Log in' or @type='submit']"
@@ -29,7 +29,7 @@ class AdminLoginPage(SeleniumDriver):
     def navigate_to_admin_login_page(self):
         print(f"Navigating to Admin Login Page: {self._admin_login_url}")
         self.driver.get(self._admin_login_url)
-        self.wait_for_page_load()
+        #self.wait_for_page_load()
 
     def enter_username(self, username):
         self.send_keys_element(username, self._username_input, locatorType="xpath")

@@ -15,7 +15,7 @@ class HomePage(SeleniumDriver):
     _join_as_teacher_link = "//a[normalize-space()='Join us as a teacher']"
     _home_page_locator = "//nav[@class='main-nav']//a[normalize-space()='Home']"
     _teacher_dashboard_link_locator = "//a[normalize-space()='Dashboard']"
-
+    _course_card_by_name = "//h5[contains(text(),'{course_name}')]/ancestor::div[contains(@class, 'course-card')]"
     def go_to_course_page(self):
         
         self.log.info("Attempting to navigate to Courses page.")
@@ -56,3 +56,13 @@ class HomePage(SeleniumDriver):
             self.log.error(f"Failed to navigate to Teacher page. Error: {e}")
             raise # Re-raise the exception to fail the test if navigation fails
 
+
+    def is_course_visible_on_homepage(self, course_name, timeout=10):
+        
+        self.log.info(f"Checking if course '{course_name}' is visible on the homepage.")
+        # Construct the specific locator for the course using the provided name
+        course_locator = self._course_card_by_name.format(course_name=course_name)
+        is_logged_in = self.is_element_visible(course_locator, locatorType="xpath", timeout=20)
+        return is_logged_in
+
+        

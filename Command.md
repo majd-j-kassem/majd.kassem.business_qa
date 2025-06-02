@@ -11,6 +11,7 @@ mkdir allure-results
 # Run your pytest tests with the --alluredir flag
 pytest src/tests --alluredir=allure-results --browser chrome-headless --baseurl http://127.0.0.1:8000/
 pytest src/tests --alluredir=allure-results --browser chrome --baseurl http://127.0.0.1:8000/
+pytest src/tests --browser chrome --baseurl http://127.0.0.1:8000/
 allure serve allure-results
 
 # ---------------------2- Reporting using Allure
