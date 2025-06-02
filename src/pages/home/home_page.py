@@ -63,7 +63,7 @@ class HomePage(SeleniumDriver):
         
         self.log.info(f"Checking if course '{course_name}' is visible on the homepage.")
         # Construct the specific locator for the course using the provided name
-        course_locator = self._course_card_by_name.format(course_name=course_name)
+        course_locator = self._course_card_by_name(course_name)
         is_logged_in = self.is_element_visible(course_locator, locatorType="xpath", timeout=20)
         return is_logged_in
 

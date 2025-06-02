@@ -56,7 +56,6 @@ class AdminDashboardPage(SeleniumDriver):
         self._user_row_by_email = lambda email: f"//tr[.//a[normalize-space()='{email}'] or .//td[normalize-space()='{email}']]"
         self._is_teacher_pending_status_in_row = lambda email: \
             f"{self._user_row_by_email(email)}/td[3]//img[@alt='True' or @alt='False']" # Third column
-
         self._is_teacher_approved_status_in_row = lambda email: \
             f"{self._user_row_by_email(email)}/td[4]//img[@alt='True' or @alt='False']" # Fourth column
 
@@ -72,7 +71,6 @@ class AdminDashboardPage(SeleniumDriver):
         return self.is_element_visible(self._dashboard_header, locatorType="xpath")
 
     def navigate_to_user_management(self):
-     
         self.log.info("Attempting to navigate to User Profiles section.")
 
         if self.click_element(self._user_profiles_link, locatorType="xpath"): # Using click_element
@@ -84,18 +82,18 @@ class AdminDashboardPage(SeleniumDriver):
                  return True
             else:
                  self.log.error("Navigated to 'User Profiles' but list page header not visible.")
-                 self.take_screenshot_on_failure("user_profiles_list_page_load_fail", "page")
+                 self.take_screenshot("user_profiles_list_page_load_fail.png") # Use generic take_screenshot
                  return False
         else:
             self.log.error("Could not find or click the 'User Profiles' link.")
-            self.take_screenshot_on_failure("navigate_to_user_profiles_fail", "page")
+            self.take_screenshot("navigate_to_user_profiles_fail.png") # Use generic take_screenshot
             return False
 
     def get_user_status_from_list(self, email, status_type="approved"):
         """
         Retrieves the status of a user from a table/list based on icon presence.
         status_type can be 'pending' (for 'Is teacher application pending') or 'approved' (for 'Is teacher approved').
-        Returns 'Approved' (True) or 'Not Approved' (False) based on alt attribute.
+        Returns 'True' or 'False' (as strings) based on alt attribute, or None if element not found.
         """
         self.log.info(f"Getting '{status_type}' status for user: {email}")
 
@@ -112,23 +110,20 @@ class AdminDashboardPage(SeleniumDriver):
             if status_icon:
                 alt_text = status_icon.get_attribute("alt")
                 if alt_text == "True":
-                    self.log.info(f"Status for {email} is 'Approved' (alt='True').")
-                    return "Approved"
+                    self.log.info(f"Status for {email} is 'True' (alt='True').")
+                    return "True"
                 elif alt_text == "False":
-                    self.log.info(f"Status for {email} is 'Not Approved' (alt='False').")
-                    return "Not Approved"
+                    self.log.info(f"Status for {email} is 'False' (alt='False').")
+                    return "False"
                 else:
                     self.log.warning(f"Unknown alt text for status icon for {email}: {alt_text}")
                     return None
             else:
                 self.log.warning(f"Status icon element not found for {email} with locator: {status_element_locator}")
                 return None
-        except (NoSuchElementException, TimeoutException) as e:
+        except Exception as e: # Catch all exceptions from _wait_for_element
             self.log.error(f"Error finding status icon for user {email} (status_type: {status_type}): {e}")
-            self.take_screenshot_on_failure(f"user_status_icon_not_found_{email}_{status_type}", "page")
-            return None
-        except Exception as e:
-            self.log.error(f"An unexpected error occurred while getting user status icon: {e}")
+            self.take_screenshot(f"user_status_icon_not_found_{email}_{status_type}_{self.get_current_timestamp()}.png")
             return None
 
     def change_user_status_and_commission(self, user_email, new_approval_status=None, commission_value=None):
@@ -175,7 +170,6 @@ class AdminDashboardPage(SeleniumDriver):
         self.log.info("Confirmed 'Teacher Application Status' tab content (commission input) is visible.")
 
         # 3. Set the commission percentage if a value is provided.
-        
         if commission_value is not None:
             self.log.info(f"Attempting to set commission for {user_email} to: {commission_value}")
             # Using send_keys_element
@@ -218,11 +212,9 @@ class AdminDashboardPage(SeleniumDriver):
                 self.log.info("No generic 'Save' button found or needed after commission change (assuming auto-save or form submission by approval button).")
 
         self.log.info(f"Finished attempting to update status and commission for {user_email}. Returning True.")
-        return True # If execution reaches here without returning False, all specified actions were successful
+        return True
+
     
-    
-    #####################Publish Course ##############
-    # Inside your AdminDashboardPage class
 
     def navigate_to_teacher_courses_page(self):
         """Navigates to the section where teacher-added courses are managed."""
@@ -235,8 +227,8 @@ class AdminDashboardPage(SeleniumDriver):
                 self.log.error("Clicking teacher courses link failed.")
                 return False
         except Exception as e:
-            self.log.error(f"Failed to navigate to Teacher Courses page: {e}")
-            self.take_screenshot_on_failure("navigate_teacher_courses_fail", "page")
+            self.log.error(f"An unexpected error occurred navigating to Teacher Courses page: {e}")
+            self.take_screenshot("navigate_teacher_courses_exception.png")
             return False
 
     def get_course_published_status(self, course_name):
@@ -274,8 +266,8 @@ class AdminDashboardPage(SeleniumDriver):
                 self.log.error(f"Clicking checkbox for {course_name} failed.")
                 return False
         except Exception as e:
-            self.log.error(f"Failed to select checkbox for {course_name}: {e}")
-            self.take_screenshot_on_failure(f"select_course_checkbox_fail_{course_name}", "element")
+            self.log.error(f"An unexpected error occurred selecting checkbox for {course_name}: {e}")
+            self.take_screenshot(f"select_course_checkbox_exception_{self._clean_locator_name(course_name)}_{self.get_current_timestamp()}.png")
             return False
 
     def select_action_from_dropdown(self, action_text):
@@ -294,7 +286,7 @@ class AdminDashboardPage(SeleniumDriver):
                 return False
         except Exception as e:
             self.log.error(f"Failed to select action '{action_text}': {e}")
-            self.take_screenshot_on_failure(f"select_action_dropdown_fail_{action_text}", "element")
+            self.take_screenshot(f"select_action_dropdown_exception_{self._clean_locator_name(action_text)}_{self.get_current_timestamp()}.png")
             return False
 
     def click_go_button(self):
@@ -309,6 +301,6 @@ class AdminDashboardPage(SeleniumDriver):
                 self.log.error("Clicking 'Go' button failed.")
                 return False
         except Exception as e:
-            self.log.error(f"Failed to click 'Go' button: {e}")
-            self.take_screenshot_on_failure("click_go_button_fail", "element")
+            self.log.error(f"An unexpected error occurred clicking 'Go' button: {e}")
+            self.take_screenshot("click_go_button_exception.png")
             return False

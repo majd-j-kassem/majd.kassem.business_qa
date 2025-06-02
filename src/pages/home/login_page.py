@@ -34,13 +34,16 @@ class LoginPage(SeleniumDriver):
     def click_logout_link(self):
         self.click_element(self.logout_link_locator, locatorType="xpath")
         
-    def login(self, username="", password=""):
-        self.click_login_link()
-        self.clear_fields()
-        self.enter_username(username)
-        self.enter_password(password)
-        self.click_login_button()
+   
         
+        
+        
+        
+        
+    def navigate_to_admin_login_page(self):
+        print(f"Navigating to Custonmer Login Page: {self.base_url}")
+        self.driver.get(self.base_url)
+        #self.wait_for_page_load()   
     def logout(self):
         self.click_logout_link()
        
@@ -75,3 +78,11 @@ class LoginPage(SeleniumDriver):
         
 
    
+   
+    def login(self, username="", password=""):
+        self.navigate_to_admin_login_page()
+        self.click_login_link()
+        self.clear_fields()
+        self.enter_username(username)
+        self.enter_password(password)
+        self.click_login_button()
