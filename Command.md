@@ -19,10 +19,16 @@ pytest src/tests --browser chrome-headless --base-url ${RENDER_PROD_URL}
 pytest src/tests --browser chrome --baseurl http://127.0.0.1:8000/
 # ###################################################################
 
-# ########### Test Cases 
-Teacher: mjdwassouf@gmail.com check the "Admin approval and faild "
+# ########### Test Cases ###############################################################
 
+# Teacher
+TC1: Valid joining 
+TC2: Valid Pending
+TC3: Valid Course Adding 
+pytest src/tests/teachers --browser chrome --baseurl http://127.0.0.1:8000/
+# Home
+TC1: Valid Login 
+TC2: Invalid Login 
+pytest src/tests/home --browser chrome --baseurl http://127.0.0.1:8000/ 
 
-# Stusent 
-test1 Dinamo12@
 

@@ -42,9 +42,20 @@ class AdminDashboardPage(SeleniumDriver):
         # This is how the approval action is triggered based on your clarification.
         # Button type="submit" name="_approve_teacher" class="button default" style="..." Approve Teacher</button>
         self._APPROVE_TEACHER_BUTTON = "//button[normalize-space()='Approve Teacher' and @name='_approve_teacher']"
+        teacher_courses_link = "//a[@class='nav-link active']"
+        self._course_published_status_icon = lambda course_name: f"//td[normalize-space()='{course_name}']/following-sibling::td/img[contains(@alt, 'Published:')]"
 
-
-
+    ########### For Course Publish ################
+    
+         # --- NEW LOCATORS FOR COURSE MANAGEMENT ---
+        self._teacher_courses_link = "//a[normalize-space()='Teacher Courses']" # Link in admin dashboard
+        self._course_list_table = "//table[@id='courseListTable']" # Table containing courses (adjust ID)
+        self._course_row_by_name = lambda course_name: f"//td[normalize-space()='{course_name}']/.."
+        self._course_checkbox_by_name = lambda course_name: f"//td[normalize-space()='{course_name}']/preceding-sibling::td/input[@type='checkbox']"
+        # Example for published status: an image with alt text "Published: True" or "Published: False"
+        self._course_published_status_icon = lambda course_name: f"//td[normalize-space()='{course_name}']/following-sibling::td/img[contains(@alt, 'Published:')]"
+        self._action_dropdown = "//select[@name='action']" # Name of the action dropdown
+        self._go_button = "//button[@value='go']" # Or input[@type='submit' and @value='Go']
 
         # Locator for the 'Teacher Application Status' tab on the user edit page
     # Using normalize-space() for robust text matching
@@ -231,3 +242,84 @@ class AdminDashboardPage(SeleniumDriver):
 
         self.log.info(f"Finished attempting to update status and commission for {user_email}. Returning True.")
         return True # If execution reaches here without returning False, all specified actions were successful
+    
+    
+    #####################Publish Course ##############
+    # Inside your AdminDashboardPage class
+
+    def navigate_to_teacher_courses_page(self):
+        """Navigates to the section where teacher-added courses are managed."""
+        self.log.info("Navigating to Teacher Courses page.")
+        try:
+            self.element_click(self._teacher_courses_link, "xpath")
+            self.wait_for_page_load() # Assuming you have a general page load wait
+            # Optionally, add a check for a header specific to the teacher courses page
+            return True
+        except Exception as e:
+            self.log.error(f"Failed to navigate to Teacher Courses page: {e}")
+            self.take_screenshot_on_failure("navigate_teacher_courses_fail", "page")
+            return False
+
+    def get_course_published_status(self, course_name):
+        """
+        Gets the published status of a course from the admin list.
+        Assumes status is indicated by 'alt' attribute on an image (e.g., green check for True, red X for False).
+        Returns "True", "False", or "Unknown" if not found or alt text is unexpected.
+        """
+        self.log.info(f"Getting published status for course: {course_name}")
+        locator = self._course_published_status_icon(course_name)
+        try:
+            element = self.wait_for_element(locator, "xpath", timeout=5)
+            status_alt = element.get_attribute("alt")
+            if "Published: True" in status_alt or "True" == status_alt:
+                return "True"
+            elif "Published: False" in status_alt or "False" == status_alt:
+                return "False"
+            else:
+                self.log.warning(f"Unexpected alt text for course status '{course_name}': {status_alt}")
+                return "Unknown"
+        except (NoSuchElementException, TimeoutException) as e:
+            self.log.error(f"Failed to find published status icon for course '{course_name}': {e}")
+            self.take_screenshot_on_failure(f"get_course_status_fail_{course_name}", "element")
+            return "Unknown"
+        except Exception as e:
+            self.log.error(f"An unexpected error occurred getting course status for '{course_name}': {e}")
+            return "Unknown"
+
+    def select_course_checkbox(self, course_name):
+        """Selects the checkbox next to a specific course in the list."""
+        self.log.info(f"Selecting checkbox for course: {course_name}")
+        locator = self._course_checkbox_by_name(course_name)
+        try:
+            self.element_click(locator, "xpath")
+            return True
+        except Exception as e:
+            self.log.error(f"Failed to select checkbox for {course_name}: {e}")
+            self.take_screenshot_on_failure(f"select_course_checkbox_fail_{course_name}", "element")
+            return False
+
+    def select_action_from_dropdown(self, action_text):
+        """Selects an action from the dropdown menu (e.g., 'Mark selected as publish')."""
+        self.log.info(f"Selecting action '{action_text}' from dropdown.")
+        try:
+            # Assumes self.select_by_visible_text is a helper in SeleniumDriver
+            select_element = self.wait_for_element(self._action_dropdown, "xpath")
+            select = Select(select_element)
+            select.select_by_visible_text(action_text)
+            return True
+        except Exception as e:
+            self.log.error(f"Failed to select action '{action_text}': {e}")
+            self.take_screenshot_on_failure(f"select_action_dropdown_fail_{action_text}", "element")
+            return False
+
+    def click_go_button(self):
+        """Clicks the 'Go' button to apply the selected action."""
+        self.log.info("Clicking 'Go' button.")
+        try:
+            self.click_element(self._go_button, "xpath")
+            self.wait_for_page_load() # Wait for the page to reload after action
+            return True
+        except Exception as e:
+            self.log.error(f"Failed to click 'Go' button: {e}")
+            self.take_screenshot_on_failure("click_go_button_fail", "element")
+            return False

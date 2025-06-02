@@ -22,8 +22,7 @@ class TestTeacher(unittest.TestCase):
         self.course_page = CourseAddingPage(self.driver, base_url)
     
         
-    #@pytest.mark.run(order=1)
-    @pytest.mark.nondestructive
+    @pytest.mark.run(order=1)
     def test_valid_course_added(self):
         
         self.home_page.go_to_Teacher_Dashboard_page()

@@ -21,8 +21,7 @@ class TestTeacher(unittest.TestCase):
         self.join_as_teacher_page = TeacherSignPage(self.driver, self.base_url)
         self.ts = StatusVerifier(self.driver, self.base_url)    
         
-    #@pytest.mark.run(order=1)
-    @pytest.mark.nondestructive
+    @pytest.mark.run(order=1)
     def test_valid_teacher_joining(self):
         
         self.home_page.go_to_teacher_signup_page()
@@ -43,7 +42,7 @@ class TestTeacher(unittest.TestCase):
                           "Enrollment Failed Verification")
 
             
-    @pytest.mark.nondestructive
+    @pytest.mark.run(order=2)
     def test_teacher_login_pending(self):
         self.home_page.go_to_teacher_signup_page()
         pending_teacher_email = "pending_teacher_" + str(int(time.time())) + "@kuwaitnet.email"

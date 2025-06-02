@@ -32,7 +32,8 @@ class CourseAddingPage(SeleniumDriver):
     course_describtion_locator = " //textarea[@id='id_description']"
     course_price_locator = "id_price" 
     add_course_button = "//button[@type='submit']"
-    course_language_list = "id_language"
+    course_language_list = "//select[@id='id_language']"
+    
     course_category_2 = "id_categories_2"
     course_level_locator = "id_level"
     submit_adding_of_course = "//button[@type='submit']"
@@ -60,7 +61,7 @@ class CourseAddingPage(SeleniumDriver):
     def select_course_language(self, course_language):
         self.log.info(f"Selecting Course Language: {course_language}")
         # `get_element` will wait for the dropdown to be present.
-        month_dropdown_element = self.get_element(locator=self.course_language_list, locatorType="id")
+        month_dropdown_element = self.get_element(locator=self.course_language_list, locatorType="xpath")
         if month_dropdown_element:
             select = Select(month_dropdown_element)
             select.select_by_visible_text(str(course_language)) # Ensure value is a string
