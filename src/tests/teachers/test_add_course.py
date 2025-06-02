@@ -29,7 +29,7 @@ class TestTeacher(unittest.TestCase):
         self.home_page.go_to_Teacher_Dashboard_page()
         course_name = "testing_course" + str(int(time.time()))
         course_description  = "We are adding random course for testing !" + str(int(time.time())) # A strong unique password
-        course_price = int(time.time() )
+        course_price = int(time.time())
         course_language = "English"
         course_level = "Advanced"
         course_image_link = "/home/majd/Documents/Majd-Personal-Work/majd.kassem.business_qa/images/student_1.jpg"

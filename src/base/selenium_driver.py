@@ -86,16 +86,11 @@ class SeleniumDriver():
         except Exception as screenshot_e:
             self.log.error(f"Failed to take screenshot: {screenshot_e}")
 
-<<<<<<< HEAD
-    def click_element(self, locator, locatorType="id", timeout=10, pollFrequency=0.5, retry_attempts=2):
-        
-=======
     def click_element(self, locator, locatorType="id", timeout=3, pollFrequency=0.5, retry_attempts=2):
         """
         Clicks on an element after waiting for it to be clickable.
         Includes robust error handling, scrolling, and a retry mechanism for flakiness.
         """
->>>>>>> efcd553e7e8823fc50f6f76f38981f17395efb9b
         attempts = 0
         while attempts <= retry_attempts:
             try:
