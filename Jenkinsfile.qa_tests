@@ -4,6 +4,7 @@ pipeline {
 
     parameters {
         string(name: 'STAGING_URL_PARAM', defaultValue: 'https://majd-kassem-business-dev.onrender.com/', description: 'URL of the SUT staging environment')
+        string(name: 'UPSTREAM_SUT_BUILD_NUMBER', defaultValue: '', description: 'Build number of the upstream SUT-Build job') 
     }
 
     environment {
@@ -42,25 +43,63 @@ pipeline {
                 }
             }
         }
+        // NEW STAGE: Collect Allure Results from Upstream SUT Build Job
+        // This stage runs before QA tests so results can be combined later.
+        stage('Collect Upstream Test Results') {
+            when {
+                // This stage will only run if an upstream build number is provided.
+                // It's crucial for gathering results from the build job.
+                expression { params.UPSTREAM_SUT_BUILD_NUMBER != '' }
+            }
+            steps {
+                script {
+                    echo "Collecting Unit, Integration, and API test results from SUT-Build job #${params.UPSTREAM_SUT_BUILD_NUMBER}..."
+                    // Create a dedicated subdirectory within this job's allure-results for SUT results
+                    sh "mkdir -p ${env.QA_ALLURE_RESULTS_DIR}/sut-tests"
+
+                    // Use the 'Copy Artifact' plugin to fetch results from the SUT build job.
+                    // Make sure the 'Copy Artifact' plugin is installed in your Jenkins.
+                    copyArtifacts(
+                        projectName: 'SUT-Build-Staging', // <--- REPLACE with the EXACT name of your SUT build Jenkins job
+                        selector: specific("${params.UPSTREAM_SUT_BUILD_NUMBER}"), // Get artifacts from the specific SUT build
+                        target: "${env.QA_ALLURE_RESULTS_DIR}/sut-tests/", // Copy them into this job's workspace under a dedicated folder
+                        filter: 'allure-results/**' // Copy the entire archived allure-results directory from the SUT job
+                    )
+                    echo "Successfully collected upstream SUT test results."
+                }
+            }
+        }
 
         stage('Run QA Tests against Staging') {
             steps {
                 script {
                     echo "Running Selenium tests against Staging URL: ${params.STAGING_URL_PARAM}"
                     // It's good practice to create the allure-results directory explicitly
-                    sh "mkdir -p allure-results"
-                    sh "mkdir -p test-results" // For JUnit XML if you decide to use it separately
+                     sh "mkdir -p ${env.QA_ALLURE_RESULTS_DIR}/qa-tests"
+                     sh "mkdir -p test-results"  // For JUnit XML if you decide to use it separately
 
                     // CORRECTED LINE: Used ./venv/bin/pytest and correctly quoted --baseurl
                     // Now, ./.venv/bin/pytest should be found after the setup stage
-                    sh "./.venv/bin/pytest src/tests --alluredir=allure-results --junitxml=test-results/junit_report.xml --browser chrome-headless --baseurl \"${params.STAGING_URL_PARAM}\""
+                    sh "./.venv/bin/pytest src/tests --alluredir=${env.QA_ALLURE_RESULTS_DIR}/qa-tests --junitxml=test-results/junit_report.xml --browser chrome-headless --baseurl \"${params.STAGING_URL_PARAM}\""
                 }
             }
         }
-
+         stage('Generate Final Combined Allure Report') {
+            when {
+                expression { true } 
+            }
+            steps {
+                script {
+                    echo "Generating final combined Allure report from all collected results (Unit, Integration, API, QA)..."
+                    allure([
+                        reportBuildPolicy: 'ALWAYS',
+                        results: [[path: env.QA_ALLURE_RESULTS_DIR]] 
+                    ])
+                }
+            }
+        }
         stage('Trigger SUT Live Deployment (if tests pass)') {
             when {
-                // Only proceed if the current QA test build is SUCCESSFUL.
                 expression { currentBuild.result == 'SUCCESS' }
             }
             steps {
@@ -80,7 +119,7 @@ pipeline {
                 // Correct Allure report publishing syntax
                 allure([
                     reportBuildPolicy: 'ALWAYS', // Always publish the report
-                    results: [[path: 'allure-results']] // Specify where the raw results are
+                    results: [[path: env.QA_ALLURE_RESULTS_DIR]] // Specify where the raw results are
                 ])
 
                 echo 'Publishing JUnit XML Reports...'
