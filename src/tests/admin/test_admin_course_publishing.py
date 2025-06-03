@@ -38,7 +38,7 @@ class TestAdminCoursePublishing(unittest.TestCase):
         self.home_page.go_to_Teacher_Dashboard_page()
         course_name = "testing_course" + str(int(time.time()))
         course_description  = "We are adding random course for testing !" + str(int(time.time())) # A strong unique password
-        course_price = int(time.time())
+        course_price = int(time.time()/100000)
         course_language = "English"
         course_level = "Advanced"
         course_image_link = "/home/majd/Documents/Majd-Personal-Work/majd.kassem.business_qa/images/student_1.jpg"
@@ -57,9 +57,7 @@ class TestAdminCoursePublishing(unittest.TestCase):
 
         admin_login_success = self.admin_login_page.admin_login(self.ADMIN_USERNAME, self.ADMIN_PASSWORD)
         result_navigate = self.admin_dashboard_page.navigate_to_teacher_courses_page()
-        initial_status = self.admin_dashboard_page.get_course_published_status(course_name)
-        print(f"Navigating to Admin Login Page: {initial_status}")
-
+       
         result_select_checkbox = self.admin_dashboard_page.select_course_checkbox(course_name)
         result_select_action = self.admin_dashboard_page.select_action_from_dropdown("Mark selected as Published (Available to Customers)")
         result_click_go = self.admin_dashboard_page.click_go_button()

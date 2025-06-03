@@ -22,8 +22,9 @@ class AdminDashboardPage(SeleniumDriver):
         self._save_button = "//button[@type='submit' and normalize-space()='Save']" # Example
         self._successful_change_message = "//div[contains(@class, 'alert-success') and contains(., 'was changed successfully.')]" # Example
         self._dashboard_header = "//i[@class='far fa-user']"
-        self._user_profiles_link = "//p[normalize-space()='User Profiles']"
+        self._user_profiles_link = "//a[@class='nav-link active']"
         self._user_profiles_page_header = "//a[@class='d-block']" # Corrected based on screenshots
+        self.teacher_profile_link = "//p[normalize-space()='User Profiles']"
 
 
 
@@ -48,10 +49,14 @@ class AdminDashboardPage(SeleniumDriver):
         self._course_list_table = "//table[@id='courseListTable']" # Table containing courses (adjust ID)
         self._course_row_by_name = lambda course_name: f"//td[normalize-space()='{course_name}']/.."
         self._course_checkbox_by_name = lambda course_name: f"//input[@type='checkbox' and contains(@aria-label, '{course_name}')]"
+        self.user_link_profile__locator = lambda email: (f"//a[normalize-space()='{email.split('@')[0]}']")
         self._course_published_status_icon = lambda course_name: f"//td[normalize-space()='{course_name}']"
         self._action_dropdown = "//select[@name='action']" # Name of the action dropdown
-        self._go_button = "//button[@value='go']" # Or input[@type='submit' and @value='Go']
-
+        self._go_button = "//button[@title='Run the selected action']" # Or input[@type='submit' and @value='Go']
+        self.teadher_user_name = self._user_edit_link_by_email = lambda email: f"//a[normalize-space()='{email.split('@')[0]}']"
+        self.teacher_app_status_tabe = "//a[normalize-space()='Teacher Application Status']"
+        self.commitin_input_text = "//input[@id='id_commission_percentage']"
+        self.approve_button_locator = "//button[@name='_approve_teacher']"
         # Locators for user list table
         self._user_row_by_email = lambda email: f"//tr[.//a[normalize-space()='{email}'] or .//td[normalize-space()='{email}']]"
         self._is_teacher_pending_status_in_row = lambda email: \
@@ -73,8 +78,7 @@ class AdminDashboardPage(SeleniumDriver):
     def navigate_to_user_management(self):
         self.log.info("Attempting to navigate to User Profiles section.")
 
-        if self.click_element(self._user_profiles_link, locatorType="xpath"): # Using click_element
-            self.log.info("Clicked 'User Profiles' link.")
+        if self.click_element(self.teacher_profile_link, locatorType="xpath"): # Using click_element
             self.wait_for_page_load() # Wait for the new page to load
             # Verify we are on the User Profiles list page (e.g., check for a header)
             if self.is_element_visible(self._user_profiles_page_header, locatorType="xpath", timeout=5):
@@ -127,93 +131,19 @@ class AdminDashboardPage(SeleniumDriver):
             return None
 
     def change_user_status_and_commission(self, user_email, new_approval_status=None, commission_value=None):
-        """
-        Navigates to a user's edit page, updates their commission percentage,
-        and changes their teacher approval status (Approved/Not Approved) via button clicks.
-
-        Args:
-            user_email (str): The email of the user (teacher) whose details are to be modified.
-            new_approval_status (str, optional): Desired approval status: "Approved" or "Not Approved".
-                                                If None, no approval action is performed.
-            commission_value (str, optional): The new commission percentage to set (e.g., "15.00").
-                                                If None, the commission is not changed.
-
-        Returns:
-            bool: True if all specified actions were performed successfully, False otherwise.
-        """
-        self.log.info(f"Attempting to update status and commission for {user_email}.")
-
-        # 1. Navigate to the specific user's edit page by clicking their link in the list.
-        user_link_xpath = self._USER_LINK_BY_EMAIL.format(user_email, user_email, user_email)
-        # Using wait_for_element_and_click, which is a method in SeleniumDriver.
-        if not self.wait_for_element_and_click(user_link_xpath, "xpath"):
-            self.log.error(f"Failed to click on user link for {user_email}. Cannot proceed with status/commission change.")
-            # self.take_screenshot(f"failed_click_user_link_{user_email}_{self.get_current_timestamp()}.png") # Handled by wait_for_element_and_click
-            return False
-
-        self.log.info(f"Navigated to edit page for {user_email}.")
-        self.wait_for_page_load() # Ensure the user's edit page is fully loaded
-
-        # 2. Click the 'Teacher Application Status' tab to reveal relevant fields.
-        self.log.info("Attempting to click 'Teacher Application Status' tab.")
-        if not self.click_element(self._TEACHER_APPLICATION_STATUS_TAB, "xpath"): # Using click_element
-            self.log.error("Failed to click 'Teacher Application Status' tab.")
-            # self.take_screenshot(f"failed_to_click_teacher_status_tab_{user_email}_{self.get_current_timestamp()}.png") # Handled by click_element
-            return False
-        self.log.info("Clicked 'Teacher Application Status' tab.")
-
-        # Wait for the tab content to be visible (e.g., the commission input field).
-        if not self.is_element_visible(self._COMMISSION_PERCENTAGE_INPUT, "id", timeout=5):
-            self.log.error("Commission percentage input not visible after clicking 'Teacher Application Status' tab. This might indicate the tab content did not load correctly.")
-            self.take_screenshot_on_failure(f"commission_input_not_visible_{user_email}", "element") # Use take_screenshot_on_failure
-            return False
-        self.log.info("Confirmed 'Teacher Application Status' tab content (commission input) is visible.")
-
-        # 3. Set the commission percentage if a value is provided.
-        if commission_value is not None:
-            self.log.info(f"Attempting to set commission for {user_email} to: {commission_value}")
-            # Using send_keys_element
-            if not self.send_keys_element(data=commission_value, locator=self._COMMISSION_PERCENTAGE_INPUT, locatorType="id"):
-                self.log.error(f"Failed to set commission percentage for {user_email}.")
-                return False
-            self.log.info(f"Successfully set commission to {commission_value}.")
-
-        # 4. Handle teacher approval or disapproval based on the specified status.
-        if new_approval_status == "Approved":
-            self.log.info(f"Attempting to click 'Approve Teacher' button for {user_email}.")
-            if not self.click_element(self._APPROVE_TEACHER_BUTTON, "xpath"): # Using click_element
-                self.log.error(f"Failed to click 'Approve Teacher' button for {user_email}.")
-                # self.take_screenshot(f"failed_click_approve_button_{user_email}_{self.get_current_timestamp()}.png") # Handled by click_element
-                return False
-            self.log.info(f"Successfully clicked 'Approve Teacher' button for {user_email}.")
-            self.wait_for_page_load() # Wait for any redirect or refresh after submission
-
-        elif new_approval_status == "Not Approved":
-            self.log.info(f"Attempting to click 'Disapprove Teacher' button for {user_email}.")
-            if not self.click_element(self._DISAPPROVE_TEACHER_BUTTON, "xpath"): # Using click_element
-                self.log.error(f"Failed to click 'Disapprove Teacher' button for {user_email}.")
-                # self.take_screenshot(f"failed_click_disapprove_button_{user_email}_{self.get_current_timestamp()}.png") # Handled by click_element
-                return False
-            self.log.info(f"Successfully clicked 'Disapprove Teacher' button for {user_email}.")
-            self.wait_for_page_load() # Wait for any redirect or refresh after submission
-
-        # 5. Handle a generic "Save" button if only commission was changed or if approval/disapproval buttons don't submit the form.
-        if commission_value is not None and new_approval_status is None:
-            self.log.info(f"Only commission was changed for {user_email}. Checking for generic Save button.")
-            if self.is_element_visible(self._save_button_generic, "xpath", timeout=3): # Check generic save button
-                self.log.info(f"Attempting to click generic Save button for {user_email}.")
-                if not self.click_element(self._save_button_generic, "xpath"): # Using click_element
-                    self.log.error(f"Failed to click generic Save button for {user_email}.")
-                    # self.take_screenshot(f"failed_click_save_button_{user_email}_{self.get_current_timestamp()}.png") # Handled by click_element
-                    return False
-                self.log.info(f"Successfully clicked generic Save button for {user_email}.")
-                self.wait_for_page_load()
-            else:
-                self.log.info("No generic 'Save' button found or needed after commission change (assuming auto-save or form submission by approval button).")
-
-        self.log.info(f"Finished attempting to update status and commission for {user_email}. Returning True.")
-        return True
-
+        
+        self.log.info(f"Selecting checkbox for course: {user_email}")
+        locator_1 = self.teadher_user_name(user_email)
+        
+        self.click_element(locator_1, "xpath")
+        time.sleep(1)
+        self.click_element(self.teacher_app_status_tabe, "xpath")
+        time.sleep(1)
+        self.send_keys_element(commission_value, self.commitin_input_text, "xpath")
+        time.sleep(1) 
+        self.click_element(self.approve_button_locator, "xpath")
+        
+      
     
 
     def navigate_to_teacher_courses_page(self):

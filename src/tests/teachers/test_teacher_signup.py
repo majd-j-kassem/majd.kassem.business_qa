@@ -14,7 +14,6 @@ class TestTeacher(unittest.TestCase):
     @pytest.fixture(autouse=True)
     def objectSetup(self, oneTimeSetUp, base_url):
         self.login_page = LoginPage(self.driver, base_url)
-        #self.login_page.login(self.APPROVED_TEACHER_EMAIL, self.APPROVED_TEACHER_PASSWORD)
         self.home_page = HomePage(self.driver, self.base_url)
         
         self.join_as_teacher_page = TeacherSignPage(self.driver, self.base_url)
