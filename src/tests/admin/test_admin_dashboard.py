@@ -8,6 +8,7 @@ from base.selenium_driver import SeleniumDriver
 from pages.teachers.teacher_signup_page import TeacherSignPage
 from pages.home.login_page import LoginPage
 from pages.home.home_page import HomePage
+import random
 
 
 @pytest.mark.usefixtures("oneTimeSetUp", "setUp")
@@ -37,7 +38,13 @@ class TestAdminDashboardFeatures(unittest.TestCase):
     def test_admin_approves_pending_teacher(self):
         
         self.home_page.go_to_teacher_signup_page()
-        pending_teacher_email = "pending_teacher_" + str(int(time.time())) + "@kuwaitnet.email"
+        
+        timestamp_suffix = str(int(time.time() * 1000))[-4:]
+        random_suffix = random.randint(1, 999)
+        unique_id = f"{timestamp_suffix}{random_suffix}"
+        pending_teacher_email = f"pending_teacher_{unique_id}@kuwaitnet.email"
+
+        #pending_teacher_email = "pending_teacher_" + str(int(time.time())) + "@kuwaitnet.email"
         pending_teacher_password = "PendingPass123!" # A strong unique password
 
         self.join_as_teacher_page.teacher_join(full_name_en="Kuwaitnet", full_name_ar="كويت نت", email=pending_teacher_email, 
@@ -53,8 +60,11 @@ class TestAdminDashboardFeatures(unittest.TestCase):
           
         result = self.admin_dashboard_page.change_user_status_and_commission(
                 pending_teacher_email, commission_value=self.commission_value)
+        time.sleep(3)
+        
         self.admin_login_page.logout()
         self.home_page.go_to_home_page()
+        
         self.loginpage.login(pending_teacher_email,pending_teacher_password)
         result = self.loginpage.verify_login_success()
         assert result is True
