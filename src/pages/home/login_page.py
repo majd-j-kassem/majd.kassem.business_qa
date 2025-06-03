@@ -2,6 +2,7 @@ from selenium.webdriver.common.by import By
 from base.selenium_driver import SeleniumDriver
 import utilities.custome_logger as cl
 import logging
+import time
 
 class LoginPage(SeleniumDriver):
     def __init__(self, driver, base_url):
@@ -80,9 +81,10 @@ class LoginPage(SeleniumDriver):
    
    
     def login(self, username="", password=""):
-        self.navigate_to_admin_login_page()
+        #self.navigate_to_admin_login_page()
         self.click_login_link()
         self.clear_fields()
         self.enter_username(username)
         self.enter_password(password)
         self.click_login_button()
+

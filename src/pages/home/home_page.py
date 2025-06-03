@@ -38,6 +38,7 @@ class HomePage(SeleniumDriver):
             self.log.error(f"Failed to navigate to Teacher page. Error: {e}")
             raise # Re-raise the exception to fail the test if navigation fails
     def go_to_home_page(self):
+        self.driver.get(self.base_url)
        
         self.log.info("Attempting to navigate to Join as a Teacher page.")
         try:

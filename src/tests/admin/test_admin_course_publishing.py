@@ -29,7 +29,6 @@ class TestAdminCoursePublishing(unittest.TestCase):
         self.course_page = CourseAddingPage(self.driver, self.base_url)
         self.admin_login_page = AdminLoginPage(self.driver, self.base_url)
         self.admin_dashboard_page = AdminDashboardPage(self.driver, self.base_url)
-        
     
         
     @pytest.mark.run(order=1)
@@ -71,15 +70,15 @@ class TestAdminCoursePublishing(unittest.TestCase):
         final_admin_status = self.admin_dashboard_page.get_course_published_status(course_name)
         print(f"final_admin_status: {final_admin_status}")
         self.admin_login_page.logout()
+        self.driver.get(self.base_url)
 
         # 8. Admin logout is handled by methodSetUp tearDown.
 
         # 9. Verify on Homepage (public view)
-        time.sleep(2) 
-        self.login_page = LoginPage(self.driver, self.base_url)
+       
         
         self.login_page.login(self.ADMIN_USERNAME, self.ADMIN_PASSWORD)
-        time.sleep(2) 
+        time.sleep(1) 
         self.home_page.go_to_course_page()
         
         # Verify course presence on homepage
