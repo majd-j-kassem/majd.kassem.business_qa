@@ -11,6 +11,7 @@ pipeline {
         QA_BRANCH = 'dev' // Or 'main' if your test code is kept on main
         LIVE_DEPLOY_JOB_NAME = 'SUT-Deploy-Live' // EXACT name of the Jenkins job for live deployment
         GIT_CREDENTIAL_ID = 'git_id' // <--- Use the ID you created in Step 1
+        QA_ALLURE_RESULTS_DIR = 'allure-results'
     }
 
     stages {
