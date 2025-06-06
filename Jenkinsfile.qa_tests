@@ -1,6 +1,9 @@
 // Jenkinsfile.qa_tests (in majd.kassem.business_qa.git)
 pipeline {
     agent any // Use 'any' as it seems your existing setup on the agent works.
+    tools{
+        nodejs 'NodeJS_24'
+    }
 
     parameters {
         string(name: 'STAGING_URL_PARAM', defaultValue: 'https://majd-kassem-business-dev.onrender.com/', description: 'URL of the SUT staging environment')
@@ -105,7 +108,7 @@ pipeline {
             steps {
                 script {
                     echo "QA tests passed. Triggering live deployment job: ${env.LIVE_DEPLOY_JOB_NAME}"
-                    build job: env.LIVE_DEPLOY_JOB_NAME, wait: true
+                    build job: env.LIVE_DEPLOY_JOB_NAME, wait: true, propagate: true
                 }
             }
         }
@@ -115,18 +118,23 @@ pipeline {
     post {
         always {
             script {
-                echo 'Publishing Allure Test Report...'
-                // Correct Allure report publishing syntax
+                echo 'Publishing Allure Test Report (for QA-Tests-Staging job)...'
+                tool name: 'Allure_2.34.0', type: 'ru.yandex.qatools.allure.jenkins.tools.AllureCommandlineInstallation'
+
                 allure([
                     reportBuildPolicy: 'ALWAYS', // Always publish the report
                     results: [[path: env.QA_ALLURE_RESULTS_DIR]] // Specify where the raw results are
                 ])
 
                 echo 'Publishing JUnit XML Reports...'
-                // Publish JUnit XML results for Jenkins' built-in Test Results view and trend graphs.
-                junit 'test-results/junit_report.xml'
+                junit "${env.QA_JUNIT_RESULTS_ROOT}/junit_report.xml" // Use defined env var
 
-                // --- Optional: Update build description/display name for quick overview ---
+                // >>> NEW CRUCIAL STEP: ARCHIVE ALLURE RAW RESULTS <<<
+                echo 'Archiving Allure raw results for parent job to consume...'
+                archiveArtifacts artifacts: "${env.QA_ALLURE_RESULTS_ROOT}/**", fingerprint: true
+                // The filter in the parent job's copyArtifacts step will use this path.
+
+                // Optional: Update build description/display name for quick overview
                 def testResultAction = currentBuild.testResultAction
                 if (testResultAction != null) {
                     def totalTests = testResultAction.totalCount
@@ -137,11 +145,14 @@ pipeline {
                 }
             }
         }
+        // --- MODIFIED POST-ACTION BLOCKS FOR CLEANUP ---
+        // Moved deleteDir() to a separate always block to ensure it runs last.
+        // This ensures email attachments are processed before the workspace is cleaned.
         success {
             script {
                 echo 'QA Tests pipeline finished successfully. Sending email...'
                 emailext (
-                    to: 'mjdwassouf@gmail.com', // <<--- REPLACE WITH YOUR EMAIL(S)
+                    to: 'mjdwassouf@gmail.com',
                     subject: "Jenkins Build ${env.JOB_NAME} - #${env.BUILD_NUMBER} - SUCCESS",
                     body: """
                     <p>Build Status: <b>SUCCESS</b></p>
@@ -151,16 +162,16 @@ pipeline {
                     <p>See attached for JUnit XML results.</p>
                     """,
                     mimeType: 'text/html',
-                    attachmentsPattern: 'test-results/junit_report.xml' // Attach JUnit XML report
+                    attachmentsPattern: "${env.QA_JUNIT_RESULTS_ROOT}/junit_report.xml" // Use env var
                 )
             }
-            deleteDir() // Clean up workspace after sending email
+            // deleteDir() is now handled by the separate 'always' block below
         }
         failure {
             script {
                 echo 'QA Tests pipeline FAILED. No deployment to live. Sending email...'
                 emailext (
-                    to: 'mjdwassouf@gmail.com', // <<--- REPLACE WITH YOUR EMAIL(S)
+                    to: 'mjdwassouf@gmail.com',
                     subject: "Jenkins Build ${env.JOB_NAME} - #${env.BUILD_NUMBER} - FAILED",
                     body: """
                     <p>Build Status: <b>FAILED!</b></p>
@@ -171,16 +182,16 @@ pipeline {
                     <p>See attached for JUnit XML results.</p>
                     """,
                     mimeType: 'text/html',
-                    attachmentsPattern: 'test-results/junit_report.xml' // Attach JUnit XML report for failure analysis
+                    attachmentsPattern: "${env.QA_JUNIT_RESULTS_ROOT}/junit_report.xml" // Use env var
                 )
             }
-            deleteDir() // Clean up workspace after sending email
+            // deleteDir() is now handled by the separate 'always' block below
         }
         unstable {
             script {
                 echo 'QA Tests pipeline finished with unstable results (e.g., some tests failed). Sending email...'
                 emailext (
-                    to: 'mjdwassouf@gmail.com', // <<--- REPLACE WITH YOUR EMAIL(S)
+                    to: 'mjdwassouf@gmail.com',
                     subject: "Jenkins Build ${env.JOB_NAME} - #${env.BUILD_NUMBER} - UNSTABLE (Some Tests Failed)",
                     body: """
                     <p>Build Status: <b>UNSTABLE</b> (Some tests failed)</p>
@@ -190,10 +201,15 @@ pipeline {
                     <p>See attached for JUnit XML results.</p>
                     """,
                     mimeType: 'text/html',
-                    attachmentsPattern: 'test-results/junit_report.xml'
+                    attachmentsPattern: "${env.QA_JUNIT_RESULTS_ROOT}/junit_report.xml"
                 )
             }
-            deleteDir() // Clean up workspace after sending email
+            // deleteDir() is now handled by the separate 'always' block below
+        }
+        // >>> NEW: SEPARATE ALWAYS BLOCK FOR WORKSPACE CLEANUP <<<
+        // This ensures deleteDir() runs AFTER all other post-actions, including emailing.
+        always {
+            deleteDir()
         }
     }
 }
