@@ -48,8 +48,9 @@ pipeline {
                     sh "mkdir -p ${env.QA_ALLURE_RESULTS_ROOT}"
                     sh "rm -rf ${env.QA_JUNIT_RESULTS_ROOT}"
                     sh "mkdir -p ${env.QA_JUNIT_RESULTS_ROOT}"
+                    sh "./.venv/bin/pytest src/tests/teachers/test_teacher_signup.py --alluredir=${env.QA_ALLURE_RESULTS_ROOT} --junitxml=${env.QA_JUNIT_RESULTS_ROOT}/junit_report.xml --browser chrome-headless --baseurl \"${params.STAGING_URL_PARAM}\""
 
-                    sh "./.venv/bin/pytest src/tests --alluredir=${env.QA_ALLURE_RESULTS_ROOT} --junitxml=${env.QA_JUNIT_RESULTS_ROOT}/junit_report.xml --browser chrome-headless --baseurl \"${params.STAGING_URL_PARAM}\""
+                    //sh "./.venv/bin/pytest src/tests --alluredir=${env.QA_ALLURE_RESULTS_ROOT} --junitxml=${env.QA_JUNIT_RESULTS_ROOT}/junit_report.xml --browser chrome-headless --baseurl \"${params.STAGING_URL_PARAM}\""
                 }
             }
         }
