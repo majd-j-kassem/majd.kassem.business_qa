@@ -1,21 +1,25 @@
 // Jenkinsfile.qa_tests (in majd.kassem.business_qa.git)
 pipeline {
-    agent any // Use 'any' as it seems your existing setup on the agent works.
+    agent any
     tools{
         nodejs 'NodeJS_24'
     }
 
     parameters {
         string(name: 'STAGING_URL_PARAM', defaultValue: 'https://majd-kassem-business-dev.onrender.com/', description: 'URL of the SUT staging environment')
-        string(name: 'UPSTREAM_SUT_BUILD_NUMBER', defaultValue: '', description: 'Build number of the upstream SUT-Build job') 
+        // >>> REMOVED: UPSTREAM_SUT_BUILD_NUMBER parameter is not needed here <<<
     }
 
     environment {
         QA_REPO = 'https://github.com/majd-j-kassem/majd.kassem.business_qa.git'
-        QA_BRANCH = 'dev' // Or 'main' if your test code is kept on main
-        LIVE_DEPLOY_JOB_NAME = 'SUT-Deploy-Live' // EXACT name of the Jenkins job for live deployment
-        GIT_CREDENTIAL_ID = 'git_id' // <--- Use the ID you created in Step 1
-        QA_ALLURE_RESULTS_DIR = 'allure-results'
+        QA_BRANCH = 'dev'
+        LIVE_DEPLOY_JOB_NAME = 'SUT-Deploy-Live' // This is the job QA directly triggers if successful
+        GIT_CREDENTIAL_ID = 'git_id'
+
+        // Define where your QA tests will output Allure results
+        // >>> MODIFIED: Simplified to just 'allure-results' and 'test-results' at the root of QA workspace <<<
+        QA_ALLURE_RESULTS_ROOT = 'allure-results'
+        QA_JUNIT_RESULTS_ROOT = 'test-results'
     }
 
     stages {
@@ -23,84 +27,44 @@ pipeline {
             steps {
                 script {
                     echo "Checking out QA repository: ${env.QA_REPO}, branch: ${env.QA_BRANCH}"
-                    // Ensure the 'checkout scm' uses the environment variables for clarity if needed,
-                    // otherwise your existing 'checkout scm' will use the job's SCM config.
-                    // Assuming your job's SCM is already configured to use GIT_CREDENTIAL_ID and the QA_REPO/QA_BRANCH
                     checkout scm
                 }
             }
         }
 
-        // NEW STAGE: Setup Python Virtual Environment
         stage('Setup Python Environment') {
             steps {
                 script {
                     echo "Setting up Python virtual environment and installing dependencies..."
-                    // Ensure python3 is available on your Jenkins agent.
-                    // This creates a virtual environment named '.venv' in your workspace root.
                     sh 'python3 -m venv ./.venv'
-                    // Install dependencies from requirements.txt into the virtual environment.
-                    // --no-cache-dir is good practice in CI to avoid large caches.
                     sh './.venv/bin/pip install --no-cache-dir -r requirements.txt'
                     echo "Python environment setup complete."
                 }
             }
         }
-        // NEW STAGE: Collect Allure Results from Upstream SUT Build Job
-        // This stage runs before QA tests so results can be combined later.
-        stage('Collect Upstream Test Results') {
-            when {
-                // This stage will only run if an upstream build number is provided.
-                // It's crucial for gathering results from the build job.
-                expression { params.UPSTREAM_SUT_BUILD_NUMBER != '' }
-            }
-            steps {
-                script {
-                    echo "Collecting Unit, Integration, and API test results from SUT-Build job #${params.UPSTREAM_SUT_BUILD_NUMBER}..."
-                    // Create a dedicated subdirectory within this job's allure-results for SUT results
-                    sh "mkdir -p ${env.QA_ALLURE_RESULTS_DIR}/sut-tests"
 
-                    // Use the 'Copy Artifact' plugin to fetch results from the SUT build job.
-                    // Make sure the 'Copy Artifact' plugin is installed in your Jenkins.
-                    copyArtifacts(
-                        projectName: 'SUT-Build-Staging', // <--- REPLACE with the EXACT name of your SUT build Jenkins job
-                        selector: specific("${params.UPSTREAM_SUT_BUILD_NUMBER}"), // Get artifacts from the specific SUT build
-                        target: "${env.QA_ALLURE_RESULTS_DIR}/sut-tests/", // Copy them into this job's workspace under a dedicated folder
-                        filter: 'allure-results/**' // Copy the entire archived allure-results directory from the SUT job
-                    )
-                    echo "Successfully collected upstream SUT test results."
-                }
-            }
-        }
+        // >>> REMOVED: 'Collect Upstream Test Results' stage <<<
+        // This logic belongs in the parent job for consolidated reporting.
 
         stage('Run QA Tests against Staging') {
             steps {
                 script {
                     echo "Running Selenium tests against Staging URL: ${params.STAGING_URL_PARAM}"
-                    // It's good practice to create the allure-results directory explicitly
-                     sh "mkdir -p ${env.QA_ALLURE_RESULTS_DIR}/qa-tests"
-                     sh "mkdir -p test-results"  // For JUnit XML if you decide to use it separately
+                    // Clean and create directories for Allure and JUnit results for *this* job
+                    sh "rm -rf ${env.QA_ALLURE_RESULTS_ROOT}"
+                    sh "mkdir -p ${env.QA_ALLURE_RESULTS_ROOT}"
+                    sh "rm -rf ${env.QA_JUNIT_RESULTS_ROOT}"
+                    sh "mkdir -p ${env.QA_JUNIT_RESULTS_ROOT}"
 
-                    // CORRECTED LINE: Used ./venv/bin/pytest and correctly quoted --baseurl
-                    // Now, ./.venv/bin/pytest should be found after the setup stage
-                    sh "./.venv/bin/pytest src/tests --alluredir=${env.QA_ALLURE_RESULTS_DIR}/qa-tests --junitxml=test-results/junit_report.xml --browser chrome-headless --baseurl \"${params.STAGING_URL_PARAM}\""
+                    // Your pytest command - outputting directly to env.QA_ALLURE_RESULTS_ROOT
+                    sh "./.venv/bin/pytest src/tests --alluredir=${env.QA_ALLURE_RESULTS_ROOT} --junitxml=${env.QA_JUNIT_RESULTS_ROOT}/junit_report.xml --browser chrome-headless --baseurl \"${params.STAGING_URL_PARAM}\""
                 }
             }
         }
-         stage('Generate Final Combined Allure Report') {
-            when {
-                expression { true } 
-            }
-            steps {
-                script {
-                    echo "Generating final combined Allure report from all collected results (Unit, Integration, API, QA)..."
-                    allure([
-                        reportBuildPolicy: 'ALWAYS',
-                        results: [[path: env.QA_ALLURE_RESULTS_DIR]] 
-                    ])
-                }
-            }
-        }
+
+        // >>> REMOVED: 'Generate Final Combined Allure Report' stage <<<
+        // The consolidated report will be generated by the parent job.
+
         stage('Trigger SUT Live Deployment (if tests pass)') {
             when {
                 expression { currentBuild.result == 'SUCCESS' }
@@ -114,27 +78,25 @@ pipeline {
         }
     }
 
-    // --- Report Publishing and Cleanup ---
     post {
         always {
             script {
-                echo 'Publishing Allure Test Report (for QA-Tests-Staging job)...'
+                echo 'Publishing Allure Test Report (for QA-Tests-Staging job itself)...'
                 tool name: 'Allure_2.34.0', type: 'ru.yandex.qatools.allure.jenkins.tools.AllureCommandlineInstallation'
 
                 allure([
-                    reportBuildPolicy: 'ALWAYS', // Always publish the report
-                    results: [[path: env.QA_ALLURE_RESULTS_DIR]] // Specify where the raw results are
+                    reportBuildPolicy: 'ALWAYS',
+                    results: [[path: env.QA_ALLURE_RESULTS_ROOT]] // Publish QA job's own report
                 ])
 
                 echo 'Publishing JUnit XML Reports...'
-                junit "${env.QA_JUNIT_RESULTS_ROOT}/junit_report.xml" // Use defined env var
+                junit "${env.QA_JUNIT_RESULTS_ROOT}/junit_report.xml"
 
-                // >>> NEW CRUCIAL STEP: ARCHIVE ALLURE RAW RESULTS <<<
+                // >>> CRUCIAL STEP: ARCHIVE ALLURE RAW RESULTS FOR PARENT JOB <<<
                 echo 'Archiving Allure raw results for parent job to consume...'
                 archiveArtifacts artifacts: "${env.QA_ALLURE_RESULTS_ROOT}/**", fingerprint: true
-                // The filter in the parent job's copyArtifacts step will use this path.
+                // The filter in the parent job's copyArtifacts step will use this exact path pattern.
 
-                // Optional: Update build description/display name for quick overview
                 def testResultAction = currentBuild.testResultAction
                 if (testResultAction != null) {
                     def totalTests = testResultAction.totalCount
@@ -143,11 +105,9 @@ pipeline {
                     currentBuild.displayName = "#${env.BUILD_NUMBER} (${totalTests} tests, ${failedTests} failed)"
                     currentBuild.description = "Total: ${totalTests} | Failed: ${failedTests} | Skipped: ${skippedTests}"
                 }
+                // deleteDir() is now handled by the separate 'always' block below
             }
         }
-        // --- MODIFIED POST-ACTION BLOCKS FOR CLEANUP ---
-        // Moved deleteDir() to a separate always block to ensure it runs last.
-        // This ensures email attachments are processed before the workspace is cleaned.
         success {
             script {
                 echo 'QA Tests pipeline finished successfully. Sending email...'
@@ -162,10 +122,9 @@ pipeline {
                     <p>See attached for JUnit XML results.</p>
                     """,
                     mimeType: 'text/html',
-                    attachmentsPattern: "${env.QA_JUNIT_RESULTS_ROOT}/junit_report.xml" // Use env var
+                    attachmentsPattern: "${env.QA_JUNIT_RESULTS_ROOT}/junit_report.xml"
                 )
             }
-            // deleteDir() is now handled by the separate 'always' block below
         }
         failure {
             script {
@@ -182,10 +141,9 @@ pipeline {
                     <p>See attached for JUnit XML results.</p>
                     """,
                     mimeType: 'text/html',
-                    attachmentsPattern: "${env.QA_JUNIT_RESULTS_ROOT}/junit_report.xml" // Use env var
+                    attachmentsPattern: "${env.QA_JUNIT_RESULTS_ROOT}/junit_report.xml"
                 )
             }
-            // deleteDir() is now handled by the separate 'always' block below
         }
         unstable {
             script {
@@ -204,12 +162,9 @@ pipeline {
                     attachmentsPattern: "${env.QA_JUNIT_RESULTS_ROOT}/junit_report.xml"
                 )
             }
-            // deleteDir() is now handled by the separate 'always' block below
         }
-        // >>> NEW: SEPARATE ALWAYS BLOCK FOR WORKSPACE CLEANUP <<<
-        // This ensures deleteDir() runs AFTER all other post-actions, including emailing.
         always {
-            deleteDir()
+            deleteDir() // This ensures cleanup runs last.
         }
     }
 }
