@@ -303,11 +303,8 @@ class TeacherSignPage(SeleniumDriver):
 
 
     def verify_joining_succssed(self):
-        """
-        Verifies if an enrollment error message is displayed.
-        """
-        self.log.info("Verifying if enrollment failed message is present.")
-        # Using the new isElementVisible which internally uses get_element and handles exceptions
+       
+        self.log.info("Verifying if enrollment success message is present.")
         result = self.is_element_visible(locator=self._success_joining_message, locatorType="xpath")
-        self.log.info(f"Enrollment failed message visible: {result}")
+        self.log.info(f"Enrollment successed message visible: {result}")
         return result

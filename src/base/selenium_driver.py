@@ -134,30 +134,92 @@ class SeleniumDriver():
         # in AdminDashboardPage might not return False correctly.
         return False # Return False if click failed after all attempts
 
-
-    def send_keys_element(self, data, locator, locatorType="id", timeout=10, pollFrequency=0.5):
+    def send_keys_element(self, data: str, locator: str, locatorType: str = "id",
+                      timeout: int = 10, pollFrequency: float = 0.5) -> bool:
         """
         Sends data to an element after waiting for it to be visible and interactable.
+
+        Args:
+            data (str): The text data to send to the element.
+            locator (str): The locator string (e.g., "username", "//input[@id='username']").
+            locatorType (str): The type of locator (e.g., "id", "xpath", "name", "css").
+            timeout (int): The maximum time to wait for the element to be visible and interactable.
+            pollFrequency (float): The frequency with which to check for the element's condition.
+
+        Returns:
+            bool: True if data was successfully sent, False otherwise.
         """
         try:
-            element = self.get_element(locator, locatorType, timeout=timeout,
-                                       pollFrequency=pollFrequency, condition=EC.visibility_of_element_located)
-            if element:
-                # Clear existing text before sending keys
-                element.clear() 
-                element.send_keys(data)
-                self.log.info(f"Sent data '{data}' to element with locator: '{locator}' and type: '{locatorType}'")
-                return True # Indicate success
-            else:
-                self.log.error(f"Could not send data: Element was not found or not visible "
-                               f"with locator: '{locator}' and type: '{locatorType}' after {timeout} seconds.")
-                # Do not raise here, let the calling method handle the False return
-                return False
-        except Exception as e:
-            self.log.error(f"An error occurred while sending keys to element '{locator}' ({locatorType}). Error: {e}")
-            self.take_screenshot_on_failure(locator, locatorType, "send_keys_error")
-            return False # Indicate failure
+            # 1. Wait for element to be visible AND interactable
+            # Using element_to_be_clickable is often better for send_keys too,
+            # as it implies visibility and interactability.
+            # Alternatively, EC.visibility_of_element_located is good for visibility,
+            # but you might need to add an explicit check for interactability if issues persist.
+            element: WebElement = self.get_element(
+                locator,
+                locatorType,
+                timeout=timeout,
+                pollFrequency=pollFrequency,
+                # For send_keys, visibility_of_element_located is a good starting point.
+                # If you still face issues with elements not being interactable (e.g., covered),
+                # consider using EC.element_to_be_clickable or adding an explicit check.
+                condition=EC.visibility_of_element_located
+            )
 
+            if element:
+                # 2. Add an explicit check for interactability (optional but robust)
+                # This can help catch cases where an element is visible but still covered.
+                try:
+                    # Attempt to clear and send keys
+                    element.clear()
+                    element.send_keys(data)
+                    self.log.info(f"Successfully sent data '{data}' to element with locator: '{locator}' "
+                                f"and type: '{locatorType}'")
+                    return True  # Indicate success
+                except ElementNotInteractableException as ex:
+                    self.log.warning(f"Element with locator '{locator}' ({locatorType}) was visible but "
+                                    f"not interactable when attempting to send keys. It might be covered. "
+                                    f"Error: {ex}")
+                    self.take_screenshot_on_failure(locator, locatorType, "element_not_interactable")
+                    return False
+                except StaleElementReferenceException as ex:
+                    self.log.warning(f"Stale element reference encountered while sending keys to '{locator}' "
+                                    f"({locatorType}). Retrying (if logic supports, else fail). Error: {ex}")
+                    # You might consider re-getting the element here and retrying once
+                    # or have a higher-level retry mechanism. For simplicity, we fail here.
+                    self.take_screenshot_on_failure(locator, locatorType, "stale_element_during_send_keys")
+                    return False
+                except Exception as ex:
+                    # Catch any other unexpected exceptions during the clear/send_keys operation
+                    self.log.error(f"An unexpected error occurred during send_keys to element '{locator}' "
+                                f"({locatorType}). Error: {ex}")
+                    self.take_screenshot_on_failure(locator, locatorType, "send_keys_unexpected_error")
+                    return False
+
+            else:
+                # This branch is hit if get_element returns None, meaning the element wasn't found
+                # or didn't meet the initial visibility condition within the timeout.
+                self.log.error(f"Could not send data: Element was not found or not visible/interactable "
+                            f"with locator: '{locator}' and type: '{locatorType}' after {timeout} seconds.")
+                self.take_screenshot_on_failure(locator, locatorType, "element_not_found_or_visible")
+                return False
+
+        except TimeoutException:
+            # This catch block specifically handles if get_element's condition (visibility_of_element_located)
+            # times out before returning an element.
+            self.log.error(f"Timeout waiting for element with locator: '{locator}' and type: '{locatorType}' "
+                        f"to be visible/interactable after {timeout} seconds. Cannot send data.")
+            self.take_screenshot_on_failure(locator, locatorType, "send_keys_timeout")
+            return False
+        except Exception as e:
+            # Catch any other unhandled exceptions from get_element or other unexpected issues
+            self.log.critical(f"A critical error occurred in send_keys_element for '{locator}' "
+                            f"({locatorType}). Error: {e}", exc_info=True) # exc_info=True to log full traceback
+            self.take_screenshot_on_failure(locator, locatorType, "send_keys_general_error")
+            return False
+
+    
+    
     def is_element_present(self, locator, locatorType="id", timeout=5, pollFrequency=0.5):
         
         element = self.get_element(locator, locatorType, timeout=timeout,
@@ -285,7 +347,7 @@ class SeleniumDriver():
             self.take_screenshot_on_failure(locator, locatorType, "get_text_error")
             # Don't re-raise here, return empty string as per function contract
         return element_text
-    
+    '''
     def _wait_for_element(self, locator, locator_type, timeout=10, condition=EC.presence_of_element_located):
         """
         Waits for a specified element to meet a given condition.
@@ -309,6 +371,7 @@ class SeleniumDriver():
             self.log.error(f"An unexpected error occurred while waiting for element '{locator}' ({locator_type}): {e}")
             self.take_screenshot(f"error_wait_element_{locator_type}_{self._clean_locator_name(locator)}_{self.get_current_timestamp()}.png")
             return False
+    '''
 
     def wait_for_element_and_click(self, locator, locator_type, timeout=10, max_retries=3):
         """

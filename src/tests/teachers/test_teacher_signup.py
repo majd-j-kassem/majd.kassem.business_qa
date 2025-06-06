@@ -38,7 +38,7 @@ class TestTeacher(unittest.TestCase):
                                                password="Dinamo12@", password_2="Dinamo12@")
         
         result = self.join_as_teacher_page.verify_joining_succssed()
-        self.home_page.go_to_teacher_signup_page()
+        
         self.ts.markFinal("test_invalidEnrollment", result,
                           "Enrollment Failed Verification")
 
