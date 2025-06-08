@@ -42,7 +42,7 @@ def base_url_from_cli(request):
     return request.config.getoption("--baseurl")
 
 @pytest.fixture(scope="class")
-def oneTimeSetUp(request, browser, base_url_from_cli): # Now these are correctly passed as arguments
+def oneTimeSetUp(request, browser, base_url): # Now these are correctly passed as arguments
     log.info(f"Running one time setUp for browser: {browser}")
     driver_options = None
     temp_user_data_dir = None
