@@ -1,5 +1,7 @@
 # Enterprise Automation Framework & Strategic V&V Proposal (Turbo Automation)
 
+> 📄 **Strategic Enterprise Proposal Included:** You can review the full architecture implementation plan and transformation charter under the [
+
 This repository hosts the production-ready automated verification infrastructure and the core architectural proof of concept (PoC) for the **"Turbo Automation"** enterprise initiative. 
 
 The project demonstrates a dual-layer approach to software engineering quality: a hands-on continuous testing execution pipeline paired with a high-level strategic transformation framework.
