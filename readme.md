@@ -1,19 +1,19 @@
 # Enterprise Automation Framework & Strategic V&V Proposal (Turbo Automation)
 
-> 📄 **Strategic Enterprise Proposal Included:** You can review the full architecture implementation plan and transformation charter under the [
-
 This repository hosts the production-ready automated verification infrastructure and the core architectural proof of concept (PoC) for the **"Turbo Automation"** enterprise initiative. 
 
-The project demonstrates a dual-layer approach to software engineering quality: a hands-on continuous testing execution pipeline paired with a high-level strategic transformation framework.
+> 📄 **Strategic Enterprise Proposal Included:** You can review the full architecture implementation plan and transformation charter under the [`strategic-proposals/`](./strategic-proposals/) directory.
+> 
+> ⚙️ **Infrastructure Environment Note:** The cloud-hosted System Under Test (SUT) staging endpoint on Render has reached its dynamic trial threshold. This framework is natively configured for isolated **Local Hardware & Network Loopback Validation** to run headless execution suites locally or within on-premise Jenkins agents.
 
 ## 🏗️ 1. Continuous Testing & Pipeline Architecture (`Jenkinsfile.qa_tests`)
 
-The quality gate is enforced via a declarative **Jenkins Automation Pipeline** that orchestrates multi-tier verification and verification (V&V) logic against the staging environment (`SUT - Render`).
+The quality gate is enforced via a declarative **Jenkins Automation Pipeline** that orchestrates multi-tier verification and validation (V&V) logic.
 
 ### Fail-Fast Stage Execution Workflow:
 1.  **Dynamic Checkout:** Pulls the targeted verification test suites directly from the active `dev` branch.
 2.  **Isolated Execution Enclosure (`venv`):** Establishes an independent Python virtual runtime environment to download dependencies with no system caching footprint.
-3.  **Headless UI System Verification:** Drives cross-browser automated verification scripts using headless Google Chrome wrappers driven by `pytest` and `Selenium WebDriver`.
+3.  **Headless UI System Verification:** Drives cross-browser automated verification scripts using headless Google Chrome wrappers driven by `pytest` and `Selenium WebDriver` (targeted via local loopback parameters).
 4.  **Automated Continuous Delivery Gate:** Evaluates validation telemetry. The production deployment job (`SUT-Deploy-Live`) executes automatically *if and only if* the complete testing tier returns a strict `SUCCESS` status.
 [Developer Push] ──> [Jenkins Webhook / Polling]
 │
@@ -23,7 +23,7 @@ The quality gate is enforced via a declarative **Jenkins Automation Pipeline** t
 └──────────────┬───────────────┘
 ▼
 ┌──────────────────────────────┐
-│  Selenium & Headless Chrome  │ ──> (Target: Render Staging SUT)
+│  Selenium & Headless Chrome  │ ──> (Target: Local Loopback / Enclosure SUT)
 └──────────────┬───────────────┘
 ▼
 ┌──────────────────────────────┐
@@ -33,6 +33,7 @@ The quality gate is enforced via a declarative **Jenkins Automation Pipeline** t
 Pipeline Evaluation?
 ├───> [ SUCCESS ] ──> Trigger 'SUT-Deploy-Live' Deployment
 └───> [ FAILURE ] ──> Terminate Delivery Chain (Fail-Fast)
+
 ## 🛠️ 2. Integrated Technology Stack & Toolchain
 
 *   **UI Functional Automation:** Selenium WebDriver with Pytest runner test architecture.
@@ -42,7 +43,7 @@ Pipeline Evaluation?
 *   **Interactive Visual Analytics:** Allure Reporting Tools (`Allure_2.34.0`) compiling telemetry into rich dashboard captures.
 *   **Automated Communication:** Extended HTML email notifications (`emailext`) dispatching explicit build status updates upon pipeline termination.
 
-## 📈 3. Enterprise Value Stream & Strategic Strategic Pillars
+## 📈 3. Enterprise Value Stream & Strategic Pillars
 
 This implementation actively transitions traditional reactive quality inspection into a proactive Value Delivery Stream, targeting critical operational metrics:
 
@@ -53,4 +54,4 @@ This implementation actively transitions traditional reactive quality inspection
 ## 👨‍💻 Author & Research Scope
 *   **Architect:** Majd Kassem
 *   **Academic Enclosure:** Ph.D. Student in Informatics at Budapest University of Technology and Economics (BME).
-*   **Core Research Intent:** Investigating Industry 5.0 systems capability, focusing on deploying next-generation AI techniques to drive explainable, robust, and dependable software V&V frameworks within smart industrial and enterprise automation networks.
+*   **Core Research Intent:** Investigating Industry 5.0 systems infrastructure, focusing on deploying next-generation AI techniques to drive explainable, robust, and dependable software V&V frameworks within smart industrial and enterprise automation networks.
